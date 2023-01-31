@@ -6,6 +6,11 @@ register(
 )
 
 register(
-    id="fiction_env/QCAEnv-v6-USE",
-    entry_point="custom_envs.envs:QCAEnv6USE",
+    id="fiction_env/QCAEnv-v7",
+    entry_point="custom_envs.envs:QCAEnv7",
+)
+
+register(
+    id="fiction_env/QCAEnv-v8",
+    entry_point="custom_envs.envs:QCAEnv8",
 )

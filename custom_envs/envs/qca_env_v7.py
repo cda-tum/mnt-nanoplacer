@@ -12,7 +12,7 @@ from fiction import pyfiction
 from time import time
 
 
-class QCAEnv6USE(gym.Env):
+class QCAEnv7(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(
@@ -207,6 +207,7 @@ class QCAEnv6USE(gym.Env):
                     "INV",
                     "FAN-OUT",
                     "OUTPUT",
+                    "BUF",
                 ]:  # INVERTER
                     self.place_node_with_1_input(preceding_nodes=preceding_nodes, x=x, y=y, north_or_west=north_or_west)
 
@@ -691,6 +692,8 @@ class QCAEnv6USE(gym.Env):
             self.layout.create_buf(signal, (x, y))
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":  # OUTPUT
             self.layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
+        elif self.node_to_action[self.actions[self.current_node]] == "BUF":
+            self.layout.create_buf(signal, (x, y))
 
         if not self.network.is_fanout(preceding_nodes[0]) and (self.layout.fanout_size(predecessor_node_head_1) == 1):
             self.close_node(preceding_nodes[0])

@@ -35,8 +35,8 @@ if __name__ == "__main__":
     benchmark = "fontes18"
     # for file in os.listdir(os.path.join(dir_path, "benchmarks", benchmark)):
     # print(file)
-    file = "xor5_r1.v"
-    path = os.path.join(dir_path, "benchmarks", benchmark, file)
+    file = "FA.v"
+    path = os.path.join(dir_path, "..", "benchmarks", benchmark, file)
     print(path)
     # path = os.path.join(dir_path, "mux21.v")
     network = pyfiction.read_logic_network(path)
@@ -57,7 +57,7 @@ if __name__ == "__main__":
             DG.add_edge(pre, x)
 
     actions_test = network.nodes()
-    actions = list(nx.topological_sort(DG))
+    actions = list(topological_sort(DG))
 
     node_to_action = {}
     for action in actions:
