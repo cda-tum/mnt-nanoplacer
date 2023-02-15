@@ -16,7 +16,7 @@ class QCAEnv7(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(
-        self, clocking_scheme="2DDWave", layout_width=7, layout_height=7, benchmark="fontes18", function="clpl"
+        self, clocking_scheme="2DDWave", layout_width=3, layout_height=4, benchmark="trindade16", function="mux21"
     ):
         self.clocking_scheme = clocking_scheme
         self.layout_width = layout_width
@@ -39,7 +39,8 @@ class QCAEnv7(gym.Env):
                 # "occupied_tiles": spaces.MultiBinary([self.layout_width, self.layout_height]),
                 # "wire_crossings": spaces.MultiBinary([self.layout_width, self.layout_height]),
                 "current_node": spaces.Discrete(max(self.actions)),
-                "node_embedding": spaces.Box(low=-2.0, high=2.0, shape=(1, 20), dtype=np.float32),
+                # "node_embedding": spaces.Box(low=-2.0, high=2.0, shape=(1, 20), dtype=np.float32),
+                # "placed_wires": spaces.Discrete(self.layout_width * self.layout_height)
             },
         )
 
@@ -61,6 +62,8 @@ class QCAEnv7(gym.Env):
         self.current_node_embedding = np.array(self.node_embeddings[str(self.actions[self.current_node])]).reshape(
             1, 20
         )
+        self.last_manhattan_distance = np.inf
+        self.distance_violations = 0
 
     @staticmethod
     def create_action_list(benchmark, function):
@@ -168,12 +171,15 @@ class QCAEnv7(gym.Env):
         self.current_node_embedding = np.array(self.node_embeddings[str(self.actions[self.current_node])]).reshape(
             1, 20
         )
+        self.last_manhattan_distance = np.inf
+        self.distance_violations = 0
 
         observation = {
             # "occupied_tiles": self.occupied_tiles,
             # "wire_crossings": self.wire_crossings,
             "current_node": self.current_node,
-            "node_embedding": self.current_node_embedding,
+            # "node_embedding": self.current_node_embedding,
+            # "placed_wires": self.placed_wires
         }
 
         return observation
@@ -244,7 +250,8 @@ class QCAEnv7(gym.Env):
             # "occupied_tiles": self.occupied_tiles,
             # "wire_crossings": self.wire_crossings,
             "current_node": self.current_node,
-            "node_embedding": self.current_node_embedding,
+            # "node_embedding": self.current_node_embedding,
+            # "placed_wires": self.placed_wires
         }
 
         info = {}
@@ -390,6 +397,21 @@ class QCAEnv7(gym.Env):
                         pos_pos_nodes_north[i][j] = 1
                         pos_pos_nodes_west[i][j] = 1
 
+        for node in self.network_node_dict:
+            heads_info = self.network_node_dict[node]
+            if heads_info["OPEN_NODE"]:
+                possible = False
+                for head in [heads_info["HEAD1"], heads_info["HEAD2"]]:
+                    if head != 0:
+                        tile = self.layout.get_tile(head)
+                        for zone in self.layout.outgoing_clocked_zones(tile):
+                            if self.layout.is_empty_tile((zone.x, zone.y, 0)):
+                                possible = True
+                            elif not self.network.is_fanout(self.layout_node_dict[(zone.x, zone.y, 0)]) and self.network.is_buf(self.layout_node_dict[(zone.x, zone.y, 0)]) and self.layout.is_empty_tile((zone.x, zone.y, 1)):
+                                possible = True
+
+                # if not possible:
+                #     self.placement_possible = False
         mask_nodes_north = pos_pos_nodes_north.flatten(order="F") == 0
         mask_nodes_west = pos_pos_nodes_west.flatten(order="F") == 0
 
@@ -404,6 +426,9 @@ class QCAEnv7(gym.Env):
         mask3 = [mask_nodes_west[i] & mask_occupied[i] for i in range(len(mask_nodes_west))]
         mask4 = [mask_wires_west[i] & mask_occupied_except_inner_wires[i] for i in range(len(mask_nodes_west))]
 
+        if any(mask1) or any(mask3):
+            mask2 = [False for _ in range(len(mask_nodes_north))]
+            mask4 = [False for _ in range(len(mask_nodes_west))]
         mask = np.concatenate([mask1, mask2, mask3, mask4])
         if not any(mask):
             self.placement_possible = False
@@ -820,7 +845,7 @@ class QCAEnv7(gym.Env):
             reward *= 1 - ((x + y) / (self.layout_width * self.layout_height))
 
         if (
-            self.placed_wires >= 10 + 5 * self.current_node
+            self.placed_wires >= 10 + 2 * self.current_node # self.layout_width + self.layout_height
             and self.node_to_action[self.actions[self.current_node]] != "OUTPUT"
         ):
             output_flag = True
@@ -828,51 +853,60 @@ class QCAEnv7(gym.Env):
         done = True if self.current_node == len(self.actions) or output_flag else False
         if self.current_node > self.max_placed_nodes:
             print(f"New best placement: {self.current_node}/{len(self.actions)} ({time() - self.start:.2f}s)")
+            print(self.layout)
             self.max_placed_nodes = self.current_node
             self.placement_times.append(time() - self.start)
             if self.current_node == len(self.actions):
                 print(f"Found solution after {time() - self.start:.2f}s")
         if self.current_node == len(self.actions):
+            self.current_node = 0
             drvs = pyfiction.gate_level_drvs(self.layout)[1]
             if drvs < self.min_drvs:
                 print(f"Found improved solution with {drvs} drvs.")
                 self.min_drvs = drvs
 
-        if node_or_wire == 1 and self.node_to_action[self.actions[self.current_node]] in [
+        if self.node_to_action[self.actions[self.current_node]] in [
             "AND",
             "OR",
             "XOR",
         ]:
-            predecessor_node_1_head_1 = self.network_node_dict[preceding_nodes[0]]["HEAD1"]
-            predecessor_node_1_head_2 = self.network_node_dict[preceding_nodes[0]]["HEAD2"]
-            predecessor_node_2_head_1 = self.network_node_dict[preceding_nodes[1]]["HEAD1"]
-            predecessor_node_2_head_2 = self.network_node_dict[preceding_nodes[1]]["HEAD2"]
-            manhattan_distances = []
-            for node_1 in [
-                predecessor_node_1_head_1,
-                predecessor_node_1_head_2,
-            ]:
-                for node_2 in [
-                    predecessor_node_2_head_1,
-                    predecessor_node_2_head_2,
+            if node_or_wire == 1:
+                predecessor_node_1_head_1 = self.network_node_dict[preceding_nodes[0]]["HEAD1"]
+                predecessor_node_1_head_2 = self.network_node_dict[preceding_nodes[0]]["HEAD2"]
+                predecessor_node_2_head_1 = self.network_node_dict[preceding_nodes[1]]["HEAD1"]
+                predecessor_node_2_head_2 = self.network_node_dict[preceding_nodes[1]]["HEAD2"]
+                manhattan_distances = []
+                for node_1 in [
+                    predecessor_node_1_head_1,
+                    predecessor_node_1_head_2,
                 ]:
-                    if node_1 != 0 and node_2 != 0:
-                        manhattan_distances.append(
-                            pyfiction.manhattan_distance(
-                                self.layout,
-                                self.layout.get_tile(node_1),
-                                self.layout.get_tile(node_2),
+                    for node_2 in [
+                        predecessor_node_2_head_1,
+                        predecessor_node_2_head_2,
+                    ]:
+                        if node_1 != 0 and node_2 != 0:
+                            manhattan_distances.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    self.layout.get_tile(node_1),
+                                    self.layout.get_tile(node_2),
+                                )
                             )
-                        )
-            if manhattan_distances:
-                # for dis in manhattan_distances:
-                #     reward += (1 - dis / (self.layout_width + self.layout_height)) / (
-                #         (self.layout_width + self.layout_height) * len(manhattan_distances)
-                #     )
-                reward = (1 - min(manhattan_distances) / (self.layout_width + self.layout_height)) / (
-                    self.layout_width + self.layout_height
-                )
-                # reward = (1 - np.mean(manhattan_distances)) / 10
+                if manhattan_distances:
+                    reward = (1 - min(manhattan_distances) / (self.layout_width + self.layout_height)) / (
+                        self.layout_width + self.layout_height
+                    )
+                    # if max(manhattan_distances) > self.last_manhattan_distance:
+                    #     self.distance_violations += 1
+
+                    #     if self.distance_violations >= 5:
+                    #         done = True
+                    # else:
+                    #     self.distance_violations = 0
+                    self.last_manhattan_distance = max(manhattan_distances)
+            else:
+                self.distance_violations = 0
+                self.last_manhattan_distance = np.inf
 
         if node_or_wire == 1 and self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             predecessor_node_head_1 = self.network_node_dict[preceding_nodes[0]]["HEAD1"]
@@ -885,11 +919,11 @@ class QCAEnv7(gym.Env):
             if predecessor_node_head_2 != 0:
                 manhattan_distances.append(self.layout_width - (self.layout.get_tile(predecessor_node_head_2).x + 1))
                 manhattan_distances.append(self.layout_height - (self.layout.get_tile(predecessor_node_head_2).y + 1))
-            if manhattan_distances:
-                for dis in manhattan_distances:
-                    reward += (1 - dis / (self.layout_width + self.layout_height)) / (
-                        (self.layout_width + self.layout_height) * len(manhattan_distances)
-                    )
+            # if manhattan_distances:
+            #     for dis in manhattan_distances:
+            #         reward += (1 - dis / (self.layout_width + self.layout_height)) / (
+            #             (self.layout_width + self.layout_height) * len(manhattan_distances)
+            #         )
 
         return reward, done
 

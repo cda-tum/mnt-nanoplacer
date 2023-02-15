@@ -3,7 +3,8 @@ from fiction import pyfiction
 
 if __name__ == "__main__":
     # Create empty layout
-    layout = pyfiction.cartesian_gate_layout((2, 4, 0), "2DDWave")
+    layout = pyfiction.cartesian_gate_layout((3, 5, 1), "2DDWave")
+    layout = pyfiction.cartesian_obstruction_layout(layout)
 
     # Create 2:1 MUX
 
@@ -34,8 +35,6 @@ if __name__ == "__main__":
     # Wires
     layout.create_buf(layout.make_signal(layout.get_node((2, 1, 0))), (2, 2))
 
-    print(pyfiction.gate_level_drvs(layout, print_report=True))
-
     # OR
     layout.create_or(
         layout.make_signal(layout.get_node((1, 3, 0))), layout.make_signal(layout.get_node((2, 2, 0))), (2, 3)
@@ -44,11 +43,21 @@ if __name__ == "__main__":
     # Outputs
     layout.create_po(layout.make_signal(layout.get_node((2, 3, 0))), "f1", (2, 4))
 
-    print(layout.fanout_size(layout.get_node((2, 3, 0))))
-    print(layout.is_empty_tile((2, 4)))
-    print(layout)
-    print(pyfiction.gate_level_drvs(layout))
+    # for gate in set(layout.gates() + layout.wires()):
+    #     layout.obstruct_coordinate(gate)
 
-    cell_layout = pyfiction.apply_qca_one_library(layout)
-    print(cell_layout)
-    pyfiction.write_qca_layout_svg(cell_layout, "mux2.svg", pyfiction.write_qca_layout_svg_params())
+    params = pyfiction.a_star_params()
+    params.crossings = True
+    source = (0, 0)
+    target = (3, 5)
+    print(f"Source coordinate: {source}")
+    print(f"Target coordinate: {target}")
+    path = pyfiction.a_star(layout, source, target, params)
+    print(pyfiction.a_star_distance(layout, source, target))
+    print(f"Shortest path: {path}")
+    print(layout)
+    layout.resize((2, 4))
+    print(layout)
+
+    # cell_layout = pyfiction.apply_qca_one_library(layout)
+    # pyfiction.write_qca_layout_svg(cell_layout, "mux2.svg", pyfiction.write_qca_layout_svg_params())

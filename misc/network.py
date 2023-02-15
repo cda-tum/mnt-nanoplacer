@@ -32,16 +32,16 @@ def topological_sort(G):
 
 
 if __name__ == "__main__":
-    benchmark = "fontes18"
-    # for file in os.listdir(os.path.join(dir_path, "benchmarks", benchmark)):
+    benchmark = "ISCAS85"
+    # for file in os.listdir(os.path.join(dir_path, "..", "benchmarks", benchmark)):
     # print(file)
-    file = "FA.v"
+    file = "c432.v"
     path = os.path.join(dir_path, "..", "benchmarks", benchmark, file)
     print(path)
     # path = os.path.join(dir_path, "mux21.v")
     network = pyfiction.read_logic_network(path)
     depth_params = pyfiction.fanout_substitution_params()
-    depth_params.strategy = pyfiction.substitution_strategy.BREADTH
+    depth_params.strategy = pyfiction.substitution_strategy.DEPTH
     network = pyfiction.fanout_substitution(network, depth_params)
 
     DG = nx.DiGraph()
@@ -94,24 +94,25 @@ if __name__ == "__main__":
         print(f"{i}: {node_to_action[action]}")
     print(len(actions))
 
-    # params = pyfiction.orthogonal_params()
     params = pyfiction.exact_params()
     params.border_io = True
     params.crossings = True
-    params.scheme = "USE"
-    params.timeout = 7200000
+    params.scheme = "2DDWave"
+    params.timeout = 36000000
+    params.desynchronize = True
+    params = pyfiction.orthogonal_params()
     import time
 
     start = time.time()
     # layout = pyfiction.exact_cartesian(network, params)
-    # layout = pyfiction.orthogonal(network, params)
+    layout = pyfiction.orthogonal(network, params)
     end = time.time()
     print(end - start)
-    # print(layout)
-    # cell_layout = pyfiction.apply_qca_one_library(layout)
-    # pyfiction.write_qca_layout_svg(
-    #     cell_layout, f"{file}_ortho.svg", pyfiction.write_qca_layout_svg_params()
-    # )
+    print(layout)
+    cell_layout = pyfiction.apply_qca_one_library(layout)
+    pyfiction.write_qca_layout_svg(
+        cell_layout, f"{file}_ortho.svg", pyfiction.write_qca_layout_svg_params()
+    )
     # print(pyfiction.equivalence_checking(network, layout))
 
     # pos = nx.spring_layout(DG, k=0.1)
@@ -127,10 +128,10 @@ if __name__ == "__main__":
 
     # clpl: 18x26=468 (ortho) <1s
     # clpl: TO (exact) after 4200s
-    # clpl: 15x15=225 900s (RL)
+    # clpl: 15x15=225 921s (RL)
     # xor5_r1: 14x33 = 462 (ortho)
     # xor5_r1: TO after 7200s
-    # xor5_r1: 16x16 = 256
+    # xor5_r1: 16x16=256 305s (RL)
     # parity: 48x120=
     # xor5R: 17x41= (ortho)
     # xor5R: (RL)
