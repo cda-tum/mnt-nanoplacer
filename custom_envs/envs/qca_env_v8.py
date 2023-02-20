@@ -1,8 +1,8 @@
 import gym
 import matplotlib.pyplot as plt
 from gym import spaces
-from node2vec import Node2Vec
-from gensim.models import Word2Vec
+# from node2vec import Node2Vec
+# from gensim.models import Word2Vec
 
 import os
 import collections
@@ -42,7 +42,7 @@ class QCAEnv8(gym.Env):
             self.actions,
             self.DG,
         ) = self.create_action_list(self.benchmark, self.function)
-        self.node_embeddings = self.create_node_embedding()
+        # self.node_embeddings = self.create_node_embedding()
         self.observation_space = spaces.Dict(
             {
                 "current_node": spaces.Discrete(max(self.actions)),
@@ -64,9 +64,9 @@ class QCAEnv8(gym.Env):
         self.min_drvs = np.inf
         self.start = time()
         self.placement_times = []
-        self.current_node_embedding = np.array(self.node_embeddings[str(self.actions[self.current_node])]).reshape(
-            1, 20
-        )
+        # self.current_node_embedding = np.array(self.node_embeddings[str(self.actions[self.current_node])]).reshape(
+        #     1, 20
+        #  )
         self.params = pyfiction.color_routing_params()
         self.params.crossings = True
         self.params.path_limit = 50
@@ -149,18 +149,18 @@ class QCAEnv8(gym.Env):
                 raise Exception(f"{action}")
         return network, node_to_action, actions, DG
 
-    def create_node_embedding(self):
-        if os.path.exists(os.path.join("node_embeddings", f"embeddings_{self.function}.model")):
-            model = Word2Vec.load(os.path.join("node_embeddings", f"embeddings_{self.function}.model"))
-        else:
-            node2vec = Node2Vec(
-                self.DG, dimensions=20, walk_length=50, num_walks=200, workers=4
-            )  # Use temp_folder for big graphs
-
-            # Embed nodes
-            model = node2vec.fit(window=1, min_count=1, batch_words=4)
-            model.save(os.path.join("node_embeddings", f"embeddings_{self.function}.model"))
-        return model.wv
+    # def create_node_embedding(self):
+    #     if os.path.exists(os.path.join("node_embeddings", f"embeddings_{self.function}.model")):
+    #         model = Word2Vec.load(os.path.join("node_embeddings", f"embeddings_{self.function}.model"))
+    #    else:
+    #         node2vec = Node2Vec(
+    #             self.DG, dimensions=20, walk_length=50, num_walks=200, workers=4
+    #         )  # Use temp_folder for big graphs
+    #
+    #         # Embed nodes
+    #         model = node2vec.fit(window=1, min_count=1, batch_words=4)
+    #         model.save(os.path.join("node_embeddings", f"embeddings_{self.function}.model"))
+    #     return model.wv
 
     def reset(self, seed=None, options=None):
         self.layout = pyfiction.cartesian_obstruction_layout(
@@ -173,9 +173,9 @@ class QCAEnv8(gym.Env):
         self.current_tries = 0
         self.placement_possible = True
         self.node_dict = collections.defaultdict(int)
-        self.current_node_embedding = np.array(self.node_embeddings[str(self.actions[self.current_node])]).reshape(
-            1, 20
-        )
+        # self.current_node_embedding = np.array(self.node_embeddings[str(self.actions[self.current_node])]).reshape(
+        #     1, 20
+        #  )
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         observation = {
@@ -295,15 +295,17 @@ class QCAEnv8(gym.Env):
             for coordinate in list(zip(*np.where(self.layout.gates() == 1))):
                 if not self.layout.is_obstructed_coordinate(coordinate + (1,)):
                     self.layout.obstruct_coordinate(coordinate + (1,))
+                if not self.layout.is_obstructed_coordinate(coordinate + (0,)):
+                    self.layout.obstruct_coordinate(coordinate + (0,))
 
             reward, done = self.calculate_reward(
                 x=x,
                 y=y,
                 placed_node=placed_node,
             )
-        self.current_node_embedding = np.array(
-            self.node_embeddings[str(self.actions[min(self.current_node, len(self.actions) - 1)])]
-        ).reshape(1, 20)
+        # self.current_node_embedding = np.array(
+        #     self.node_embeddings[str(self.actions[min(self.current_node, len(self.actions) - 1)])]
+        # ).reshape(1, 20)
 
         observation = {
             "current_node": self.current_node,
@@ -439,11 +441,11 @@ class QCAEnv8(gym.Env):
                             possible = True
                 params = pyfiction.a_star_params()
                 params.crossings = True
-                if len(pyfiction.a_star(self.layout, tile, (self.layout_width, self.layout_height), params)) == np.inf:
+                if len(pyfiction.a_star(self.layout, tile, (self.layout_width, self.layout_height), params)) == 0:
                     possible = False
                 if not possible:
                     self.placement_possible = False
-        layout_mask = int(5 + ((self.current_node * (max(self.layout_width, self.layout_height) - 5))/len(self.actions))) + 3
+        layout_mask = int(4 + ((self.current_node * (max(self.layout_width, self.layout_height) - 4))/len(self.actions))) + 1
         if not self.node_to_action[self.actions[self.current_node]] == "OUTPUT" and self.clocking_scheme == "2DDWave":
             possible_positions_nodes[layout_mask:, :] = 1
             possible_positions_nodes[:, layout_mask:] = 1
