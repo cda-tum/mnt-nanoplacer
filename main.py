@@ -11,12 +11,12 @@ from argparse import ArgumentParser
 # dir_path = os.path.dirname(os.path.realpath(__file__))
 env_id = "fiction_env/QCAEnv-v8"
 clocking_scheme = "2DDWave"
-layout_width = 50
-layout_height = 50
-benchmark = "fontes18"
-function = "parity"
-time_steps = 200000
-mode = "TRAIN"  # "INIT", "TRAIN"
+layout_width = 200
+layout_height = 200
+benchmark = "ISCAS85"
+function = "c432"
+time_steps = 10000
+mode = "INIT"  # "INIT", "TRAIN"
 save = True
 verbose = 0
 
