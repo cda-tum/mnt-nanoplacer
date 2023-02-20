@@ -22,6 +22,7 @@ class QCAEnv8(gym.Env):
         layout_height=4,
         benchmark="trindade16",
         function="mux21",
+        verbose=1,
     ):
         self.last_pos = None
         self.clocking_scheme = clocking_scheme
@@ -73,6 +74,7 @@ class QCAEnv8(gym.Env):
         self.params.engine = pyfiction.graph_coloring_engine.MCS
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
         self.gates = np.zeros([self.layout_width, self.layout_height], dtype=int)
+        self.verbose = verbose
 
     @staticmethod
     def create_action_list(benchmark, function):
@@ -467,9 +469,10 @@ class QCAEnv8(gym.Env):
         done = True if self.current_node == len(self.actions) or not self.placement_possible else False
         if self.current_node > self.max_placed_nodes:
             print(f"New best placement: {self.current_node}/{len(self.actions)} ({time() - self.start:.2f}s)")
-            self.layout.resize((self.layout_width - 1, self.layout_height - 1, 1))
-            print(self.layout)
-            self.layout.resize((self.layout_width, self.layout_height, 1))
+            if self.verbose == 1:
+                self.layout.resize((self.layout_width - 1, self.layout_height - 1, 1))
+                print(self.layout)
+                self.layout.resize((self.layout_width, self.layout_height, 1))
             self.max_placed_nodes = self.current_node
             self.placement_times.append(time() - self.start)
             if self.current_node == len(self.actions):
