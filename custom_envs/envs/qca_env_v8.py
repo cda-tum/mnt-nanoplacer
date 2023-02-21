@@ -189,6 +189,7 @@ class QCAEnv8(gym.Env):
         self.last_pos = None
         self.current_tries = 0
         self.max_tries = 0
+        self.gates = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         return observation
 
@@ -225,10 +226,10 @@ class QCAEnv8(gym.Env):
 
                 if self.current_tries == 0:
                     self.place_node_with_2_inputs(x=x, y=y, signal_1=signal_1, signal_2=signal_2)
+                    self.layout.move_node(self.layout.get_node((x, y)), (x, y), [])
                 else:
                     self.layout.move_node(self.layout.get_node(self.last_pos), (x, y), [])
                 self.last_pos = (x, y)
-                self.layout.move_node(self.layout.get_node((x, y)), (x, y), [])
 
                 if not pyfiction.color_routing(
                     self.layout,
@@ -294,7 +295,7 @@ class QCAEnv8(gym.Env):
                 self.gates[x][y] = 1
                 self.layout.obstruct_coordinate((x, y, 0))
                 self.layout.obstruct_coordinate((x, y, 1))
-            for coordinate in list(zip(*np.where(self.layout.gates() == 1))):
+            for coordinate in list(zip(*np.where(self.gates == 1))):
                 if not self.layout.is_obstructed_coordinate(coordinate + (1,)):
                     self.layout.obstruct_coordinate(coordinate + (1,))
                 if not self.layout.is_obstructed_coordinate(coordinate + (0,)):

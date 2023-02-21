@@ -6,6 +6,7 @@ from sb3_contrib.common.maskable.utils import get_action_masks
 import torch as th
 import custom_envs
 from argparse import ArgumentParser
+import argparse
 
 
 # dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("-lh", "--layout_height", type=int, choices=range(1, 1000), default=layout_height)
     parser.add_argument("-t", "--time_steps", type=int, default=time_steps)
     parser.add_argument("-m", "--mode", type=str, choices=["INIT", "TRAIN"], default=mode)
-    parser.add_argument("-s", "--save", type=bool, default=save)
+    parser.add_argument("-s", "--save", action='store_true', default=save)
     parser.add_argument("-v", "--verbose", type=int, choices=[0, 1], default=verbose)
     args = parser.parse_args()
     print(args)
@@ -57,12 +58,14 @@ if __name__ == "__main__":
                             # policy_kwargs = policy_kwargs,
                             create_eval_env=False,
                             )
+        reset_num_timesteps = True
     elif args.mode == "TRAIN":
         model = MaskablePPO.load(os.path.join("models", f"ppo_fiction_v8_{args.function}"), env)
+        reset_num_timesteps = False
     else:
         raise Exception
 
-    model.learn(total_timesteps=args.time_steps, log_interval=1, reset_num_timesteps=False)
+    model.learn(total_timesteps=args.time_steps, log_interval=1, reset_num_timesteps=reset_num_timesteps)
     # env.plot_placement_times()
 
     if args.save:
@@ -79,6 +82,7 @@ if __name__ == "__main__":
         action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
         # action = actions[i]
         obs, reward, terminated, info = env.step(action)
-        # env.render()
+        if args.verbose == 1:
+            env.render()
         i += 1
     env.create_cell_layout()
