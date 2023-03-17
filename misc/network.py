@@ -2,6 +2,8 @@ from fiction import pyfiction
 import os
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -32,87 +34,91 @@ def topological_sort(G):
 
 
 if __name__ == "__main__":
-    benchmark = "ISCAS85"
-    # for file in os.listdir(os.path.join(dir_path, "..", "benchmarks", benchmark)):
-    # print(file)
-    file = "c432.v"
-    path = os.path.join(dir_path, "..", "benchmarks", benchmark, file)
-    print(path)
-    # path = os.path.join(dir_path, "mux21.v")
-    network = pyfiction.read_logic_network(path)
-    depth_params = pyfiction.fanout_substitution_params()
-    depth_params.strategy = pyfiction.substitution_strategy.DEPTH
-    network = pyfiction.fanout_substitution(network, depth_params)
+    benchmark = "iscas85"
+    for file in os.listdir(os.path.join(dir_path, "..", "benchmarks", benchmark)):
+        print(file)
+        # file = "div.v"
+        path = os.path.join(dir_path, "..", "benchmarks", benchmark, file)
+        # print(path)
+        # path = os.path.join(dir_path, "mux21.v")
+        network = pyfiction.read_logic_network(path)
+        # depth_params = pyfiction.fanout_substitution_params()
+        # depth_params.strategy = pyfiction.substitution_strategy.DEPTH
+        # network = pyfiction.fanout_substitution(network, depth_params)
 
-    DG = nx.DiGraph()
+        DG = nx.DiGraph()
 
-    # add nodes
-    DG.add_nodes_from(network.pis())
-    DG.add_nodes_from(network.pos())
-    DG.add_nodes_from(network.gates())
+        # add nodes
+        DG.add_nodes_from(network.pis())
+        DG.add_nodes_from(network.pos())
+        DG.add_nodes_from(network.gates())
 
-    # add edges
-    for x in range(max(network.gates()) + 1):
-        for pre in network.fanins(x):
-            DG.add_edge(pre, x)
+        # add edges
+        for x in range(max(network.gates()) + 1):
+            for pre in network.fanins(x):
+                DG.add_edge(pre, x)
 
-    actions_test = network.nodes()
-    actions = list(topological_sort(DG))
+        actions_test = network.nodes()
+        actions = list(topological_sort(DG))
 
-    node_to_action = {}
-    for action in actions:
-        if network.is_pi(action):
-            node_to_action[action] = "INPUT"
-        elif network.is_po(action):
-            node_to_action[action] = "OUTPUT"
-        elif network.is_inv(action):
-            node_to_action[action] = "INV"
-        elif network.is_and(action):
-            node_to_action[action] = "AND"
-        elif network.is_or(action):
-            node_to_action[action] = "OR"
-        elif network.is_nand(action):
-            node_to_action[action] = "NAND"
-        elif network.is_nor(action):
-            node_to_action[action] = "NOR"
-        elif network.is_xor(action):
-            node_to_action[action] = "XOR"
-        elif network.is_xnor(action):
-            node_to_action[action] = "XNOR"
-        elif network.is_maj(action):
-            node_to_action[action] = "MAJ"
-        elif network.is_fanout(action):
-            node_to_action[action] = "FAN-OUT"
-        elif network.is_buf(action):
-            node_to_action[action] = "BUF"
-        else:
-            print(action)
+        node_to_action = {}
+        # for action in actions:
+        #     if network.is_pi(action):
+        #         node_to_action[action] = "INPUT"
+        #     elif network.is_po(action):
+        #         node_to_action[action] = "OUTPUT"
+        #     elif network.is_inv(action):
+        #        node_to_action[action] = "INV"
+        #      elif network.is_and(action):
+        #         node_to_action[action] = "AND"
+        #     elif network.is_or(action):
+        #         node_to_action[action] = "OR"
+        #     elif network.is_nand(action):
+        #         node_to_action[action] = "NAND"
+        #     elif network.is_nor(action):
+        #         node_to_action[action] = "NOR"
+        #     elif network.is_xor(action):
+        #         node_to_action[action] = "XOR"
+        #     elif network.is_xnor(action):
+        #         node_to_action[action] = "XNOR"
+        #     elif network.is_maj(action):
+        #         node_to_action[action] = "MAJ"
+        #     elif network.is_fanout(action):
+        #         node_to_action[action] = "FAN-OUT"
+        #     elif network.is_buf(action):
+        #         node_to_action[action] = "BUF"
+        #     else:
+        #         print(action)
 
-    i = 0
-    for action in node_to_action:
-        i += 1
-        print(f"{i}: {node_to_action[action]}")
-    print(len(actions))
+        # i = 0
+        # for action in node_to_action:
+        #     i += 1
+        #     print(f"{i}: {node_to_action[action]}")
+        print(len(actions))
 
-    params = pyfiction.exact_params()
-    params.border_io = True
-    params.crossings = True
-    params.scheme = "2DDWave"
-    params.timeout = 36000000
-    params.desynchronize = True
-    params = pyfiction.orthogonal_params()
-    import time
+        # params = pyfiction.exact_params()
+        # params.border_io = True
+        # params.crossings = True
+        # params.scheme = "RES"
+        # params.timeout = 3600000
+        # params.desynchronize = True
+        # params = pyfiction.orthogonal_params()
+        # import time
 
-    start = time.time()
-    # layout = pyfiction.exact_cartesian(network, params)
-    layout = pyfiction.orthogonal(network, params)
-    end = time.time()
-    print(end - start)
-    print(layout)
-    cell_layout = pyfiction.apply_qca_one_library(layout)
-    pyfiction.write_qca_layout_svg(
-        cell_layout, f"{file}_ortho.svg", pyfiction.write_qca_layout_svg_params()
-    )
+        # start = time.time()
+        # layout = pyfiction.exact_cartesian(network, params)
+        # layout = pyfiction.exact_hexagonal(network, params)
+        # layout = pyfiction.orthogonal(network, params)
+
+        # end = time.time()
+        # print(end - start)
+        # print(layout)
+
+    # cell_layout = pyfiction.apply_bestagon_library(layout)
+    # pyfiction.write_dot_layout(layout, "test.dot")
+    # cell_layout = pyfiction.apply_qca_one_library(layout)
+    # pyfiction.write_qca_layout_svg(cell_layout, f"{file}_ortho.svg", pyfiction.write_qca_layout_svg_params())
+    # print(cell_layout)
     # print(pyfiction.equivalence_checking(network, layout))
 
     # pos = nx.spring_layout(DG, k=0.1)

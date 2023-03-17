@@ -412,6 +412,238 @@ class QCAEnv7(gym.Env):
 
                 # if not possible:
                 #     self.placement_possible = False
+
+        if self.node_to_action[self.actions[self.current_node]] in [
+            "AND",
+            "OR",
+            "XOR",
+        ]:
+            predecessor_node_1_head_1 = self.network_node_dict[preceding_nodes[0]]["HEAD1"]
+            predecessor_node_1_head_2 = self.network_node_dict[preceding_nodes[0]]["HEAD2"]
+
+            predecessor_node_2_head_1 = self.network_node_dict[preceding_nodes[1]]["HEAD1"]
+            predecessor_node_2_head_2 = self.network_node_dict[preceding_nodes[1]]["HEAD2"]
+
+            if predecessor_node_1_head_1 != 0:
+                predecessor_node_1_head_1_loc = self.layout.get_tile(predecessor_node_1_head_1)
+                if ((predecessor_node_1_head_1_loc.x + 1) != self.layout_width) and\
+                        ((predecessor_node_1_head_1_loc.y + 1) != self.layout_height):
+                    if (pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] == 0) and\
+                            (pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] == 0):
+                        manhattan_distances_east = []
+                        manhattan_distances_south = []
+                        if predecessor_node_2_head_1 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_1_loc.x + 1,
+                                     predecessor_node_1_head_1_loc.y,
+                                     predecessor_node_1_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_1),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_1_loc.x,
+                                     predecessor_node_1_head_1_loc.y + 1,
+                                     predecessor_node_1_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_1),
+                                )
+                            )
+                        if predecessor_node_2_head_2 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_1_loc.x + 1,
+                                     predecessor_node_1_head_1_loc.y,
+                                     predecessor_node_1_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_2),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_1_loc.x,
+                                     predecessor_node_1_head_1_loc.y + 1,
+                                     predecessor_node_1_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_2),
+                                )
+                            )
+                        manhattan_distance_east = np.mean(manhattan_distances_east)
+                        manhattan_distance_south = np.mean(manhattan_distances_south)
+                        if manhattan_distance_east < manhattan_distance_south:
+                            pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] = 0
+                            pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] = 1
+                        else:
+                            pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] = 1
+                            pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] = 0
+
+            if predecessor_node_1_head_2 != 0:
+                predecessor_node_1_head_2_loc = self.layout.get_tile(predecessor_node_1_head_2)
+                if ((predecessor_node_1_head_2_loc.x + 1) != self.layout_width) and\
+                        ((predecessor_node_1_head_2_loc.y + 1) != self.layout_height):
+                    if (pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] == 0) and\
+                            (pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] == 0):
+                        manhattan_distances_east = []
+                        manhattan_distances_south = []
+                        if predecessor_node_2_head_1 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_2_loc.x + 1,
+                                     predecessor_node_1_head_2_loc.y,
+                                     predecessor_node_1_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_1),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_2_loc.x,
+                                     predecessor_node_1_head_2_loc.y + 1,
+                                     predecessor_node_1_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_1),
+                                )
+                            )
+                        if predecessor_node_2_head_2 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_2_loc.x + 1,
+                                     predecessor_node_1_head_2_loc.y,
+                                     predecessor_node_1_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_2),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_1_head_2_loc.x,
+                                     predecessor_node_1_head_2_loc.y + 1,
+                                     predecessor_node_1_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_2_head_2),
+                                )
+                            )
+                        manhattan_distance_east = np.mean(manhattan_distances_east)
+                        manhattan_distance_south = np.mean(manhattan_distances_south)
+                        if manhattan_distance_east < manhattan_distance_south:
+                            pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] = 0
+                            pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] = 1
+                        else:
+                            pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] = 1
+                            pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] = 0
+
+            if predecessor_node_2_head_1 != 0:
+                predecessor_node_2_head_1_loc = self.layout.get_tile(predecessor_node_2_head_1)
+                if ((predecessor_node_2_head_1_loc.x + 1) != self.layout_width) and\
+                        ((predecessor_node_2_head_1_loc.y + 1) != self.layout_height):
+                    if (pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] == 0) and\
+                            (pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] == 0):
+                        manhattan_distances_east = []
+                        manhattan_distances_south = []
+                        if predecessor_node_1_head_1 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_1_loc.x + 1,
+                                     predecessor_node_2_head_1_loc.y,
+                                     predecessor_node_2_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_1),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_1_loc.x,
+                                     predecessor_node_2_head_1_loc.y + 1,
+                                     predecessor_node_2_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_1),
+                                )
+                            )
+                        if predecessor_node_1_head_2 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_1_loc.x + 1,
+                                     predecessor_node_2_head_1_loc.y,
+                                     predecessor_node_2_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_2),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_1_loc.x,
+                                     predecessor_node_2_head_1_loc.y + 1,
+                                     predecessor_node_2_head_1_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_2),
+                                )
+                            )
+                        manhattan_distance_east = np.mean(manhattan_distances_east)
+                        manhattan_distance_south = np.mean(manhattan_distances_south)
+                        if manhattan_distance_east < manhattan_distance_south:
+                            pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] = 0
+                            pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] = 1
+                        else:
+                            pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] = 1
+                            pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] = 0
+
+            if predecessor_node_2_head_2 != 0:
+                predecessor_node_2_head_2_loc = self.layout.get_tile(predecessor_node_2_head_2)
+                if ((predecessor_node_2_head_2_loc.x + 1) != self.layout_width) and\
+                        ((predecessor_node_2_head_2_loc.y + 1) != self.layout_height):
+                    if (pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] == 0) and\
+                            (pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] == 0):
+                        manhattan_distances_east = []
+                        manhattan_distances_south = []
+                        if predecessor_node_1_head_1 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_2_loc.x + 1,
+                                     predecessor_node_2_head_2_loc.y,
+                                     predecessor_node_2_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_1),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_2_loc.x,
+                                     predecessor_node_2_head_2_loc.y + 1,
+                                     predecessor_node_2_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_1),
+                                )
+                            )
+                        if predecessor_node_1_head_2 != 0:
+                            manhattan_distances_east.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_2_loc.x + 1,
+                                     predecessor_node_2_head_2_loc.y,
+                                     predecessor_node_2_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_2),
+                                )
+                            )
+                            manhattan_distances_south.append(
+                                pyfiction.manhattan_distance(
+                                    self.layout,
+                                    (predecessor_node_2_head_2_loc.x,
+                                     predecessor_node_2_head_2_loc.y + 1,
+                                     predecessor_node_2_head_2_loc.z),
+                                    self.layout.get_tile(predecessor_node_1_head_2),
+                                )
+                            )
+                        manhattan_distance_east = np.mean(manhattan_distances_east)
+                        manhattan_distance_south = np.mean(manhattan_distances_south)
+                        if manhattan_distance_east < manhattan_distance_south:
+                            pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] = 0
+                            pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] = 1
+                        else:
+                            pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] = 1
+                            pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] = 0
+
         mask_nodes_north = pos_pos_nodes_north.flatten(order="F") == 0
         mask_nodes_west = pos_pos_nodes_west.flatten(order="F") == 0
 

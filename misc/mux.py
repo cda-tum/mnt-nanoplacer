@@ -1,9 +1,10 @@
 from fiction import pyfiction
+import numpy as np
 
 
 if __name__ == "__main__":
     # Create empty layout
-    layout = pyfiction.cartesian_gate_layout((3, 5, 1), "2DDWave")
+    layout = pyfiction.cartesian_gate_layout((2, 4, 1), "2DDWave")
     layout = pyfiction.cartesian_obstruction_layout(layout)
 
     # Create 2:1 MUX
@@ -48,15 +49,13 @@ if __name__ == "__main__":
 
     params = pyfiction.a_star_params()
     params.crossings = True
-    source = (0, 0)
-    target = (3, 5)
+    source = (1, 0)
+    target = (2, 2)
     print(f"Source coordinate: {source}")
     print(f"Target coordinate: {target}")
     path = pyfiction.a_star(layout, source, target, params)
-    print(pyfiction.a_star_distance(layout, source, target))
+    print(len(pyfiction.a_star(layout, source, target)))
     print(f"Shortest path: {path}")
-    print(layout)
-    layout.resize((2, 4))
     print(layout)
 
     # cell_layout = pyfiction.apply_qca_one_library(layout)

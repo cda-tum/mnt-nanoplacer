@@ -14,3 +14,8 @@ register(
     id="fiction_env/QCAEnv-v8",
     entry_point="custom_envs.envs:QCAEnv8",
 )
+
+register(
+    id="fiction_env/QCAEnv-v9",
+    entry_point="custom_envs.envs:QCAEnv9",
+)

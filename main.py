@@ -10,16 +10,16 @@ import argparse
 
 
 # dir_path = os.path.dirname(os.path.realpath(__file__))
-env_id = "fiction_env/QCAEnv-v8"
-clocking_scheme = "2DDWave"
-layout_width = 200
-layout_height = 200
-benchmark = "ISCAS85"
-function = "c432"
-time_steps = 10000
-mode = "INIT"  # "INIT", "TRAIN"
+env_id = "fiction_env/QCAEnv-v9"
+clocking_scheme = "RES"
+layout_width = 65
+layout_height = 65
+benchmark = "fontes18"
+function = "2bitAdderMaj"
+time_steps = 300000
+mode = "TRAIN"  # "INIT", "TRAIN"
 save = True
-verbose = 0
+verbose = 1
 
 
 if __name__ == "__main__":
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         model = MaskablePPO("MultiInputPolicy",
                             env,
                             batch_size=512,
-                            verbose=1,
+                            verbose=args.verbose,
                             gamma=0.995,
                             learning_rate=0.001,
                             tensorboard_log=f"./tensorboard/{args.function}/",
@@ -60,7 +60,7 @@ if __name__ == "__main__":
                             )
         reset_num_timesteps = True
     elif args.mode == "TRAIN":
-        model = MaskablePPO.load(os.path.join("models", f"ppo_fiction_v8_{args.function}"), env)
+        model = MaskablePPO.load(os.path.join("models", f"ppo_fiction_v8_{args.function}_{args.clocking_scheme}"), env)
         reset_num_timesteps = False
     else:
         raise Exception
@@ -69,20 +69,23 @@ if __name__ == "__main__":
     # env.plot_placement_times()
 
     if args.save:
-        model.save(os.path.join("models", f"ppo_fiction_v8_{args.function}"))
+        model.save(os.path.join("models", f"ppo_fiction_v8_{args.function}_{args.clocking_scheme}"))
 
+    # reset environment
     obs = env.reset()
-
-    # actions = [1, 5, 16, 20, 22]
     terminated = False
-    reward = 0
-    i = 0
-    while not terminated: # and i < len(actions):
+
+    while not terminated:
+        # calculate unfeasible layout positions
         action_masks = get_action_masks(env)
+
+        # Predict coordinate for next gate based on the gate to be placed and the action mask
         action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
-        # action = actions[i]
+
+        # place gate, route it and recieve reward of +1 if sucessfull, 0 else
+        # placement is terminated if no further feasible placement is possible
         obs, reward, terminated, info = env.step(action)
+
+        # print current layout
         if args.verbose == 1:
-            env.render()
-        i += 1
-    env.create_cell_layout()
+           env.render()
