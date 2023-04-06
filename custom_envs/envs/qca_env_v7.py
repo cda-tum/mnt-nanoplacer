@@ -16,13 +16,19 @@ class QCAEnv7(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(
-        self, clocking_scheme="2DDWave", layout_width=3, layout_height=4, benchmark="trindade16", function="mux21"
+        self,
+        clocking_scheme="2DDWave",
+        layout_width=3,
+        layout_height=4,
+        benchmark="trindade16",
+        function="mux21",
     ):
         self.clocking_scheme = clocking_scheme
         self.layout_width = layout_width
         self.layout_height = layout_height
         self.layout = pyfiction.cartesian_gate_layout(
-            (self.layout_width - 1, self.layout_height - 1, 1), self.clocking_scheme
+            (self.layout_width - 1, self.layout_height - 1, 1),
+            self.clocking_scheme,
         )
 
         self.benchmark = benchmark
@@ -158,7 +164,8 @@ class QCAEnv7(gym.Env):
 
     def reset(self, seed=None, options=None):
         self.layout = pyfiction.cartesian_gate_layout(
-            (self.layout_width - 1, self.layout_height - 1, 1), self.clocking_scheme
+            (self.layout_width - 1, self.layout_height - 1, 1),
+            self.clocking_scheme,
         )
         self.current_node = 0
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
@@ -215,7 +222,12 @@ class QCAEnv7(gym.Env):
                     "OUTPUT",
                     "BUF",
                 ]:  # INVERTER
-                    self.place_node_with_1_input(preceding_nodes=preceding_nodes, x=x, y=y, north_or_west=north_or_west)
+                    self.place_node_with_1_input(
+                        preceding_nodes=preceding_nodes,
+                        x=x,
+                        y=y,
+                        north_or_west=north_or_west,
+                    )
 
                 else:
                     raise Exception(f"Not a valid node: {self.node_to_action[self.actions[self.current_node]]}")
@@ -356,7 +368,10 @@ class QCAEnv7(gym.Env):
                             node = self.layout.get_tile(head)
                             for layer in range(2):
                                 for zone in self.layout.outgoing_clocked_zones((node.x, node.y, layer)):
-                                    if zone not in [(node.x, node.y, 0), (node.x, node.y, 1)]:
+                                    if zone not in [
+                                        (node.x, node.y, 0),
+                                        (node.x, node.y, 1),
+                                    ]:
                                         if not self.layout.is_outgoing_signal(
                                             (node.x, node.y, 0),
                                             self.layout.make_signal(self.layout.get_node((zone.x, zone.y, 0))),
@@ -407,7 +422,11 @@ class QCAEnv7(gym.Env):
                         for zone in self.layout.outgoing_clocked_zones(tile):
                             if self.layout.is_empty_tile((zone.x, zone.y, 0)):
                                 possible = True
-                            elif not self.network.is_fanout(self.layout_node_dict[(zone.x, zone.y, 0)]) and self.network.is_buf(self.layout_node_dict[(zone.x, zone.y, 0)]) and self.layout.is_empty_tile((zone.x, zone.y, 1)):
+                            elif (
+                                not self.network.is_fanout(self.layout_node_dict[(zone.x, zone.y, 0)])
+                                and self.network.is_buf(self.layout_node_dict[(zone.x, zone.y, 0)])
+                                and self.layout.is_empty_tile((zone.x, zone.y, 1))
+                            ):
                                 possible = True
 
                 # if not possible:
@@ -426,28 +445,36 @@ class QCAEnv7(gym.Env):
 
             if predecessor_node_1_head_1 != 0:
                 predecessor_node_1_head_1_loc = self.layout.get_tile(predecessor_node_1_head_1)
-                if ((predecessor_node_1_head_1_loc.x + 1) != self.layout_width) and\
-                        ((predecessor_node_1_head_1_loc.y + 1) != self.layout_height):
-                    if (pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] == 0) and\
-                            (pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] == 0):
+                if ((predecessor_node_1_head_1_loc.x + 1) != self.layout_width) and (
+                    (predecessor_node_1_head_1_loc.y + 1) != self.layout_height
+                ):
+                    if (
+                        pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] == 0
+                    ) and (
+                        pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] == 0
+                    ):
                         manhattan_distances_east = []
                         manhattan_distances_south = []
                         if predecessor_node_2_head_1 != 0:
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_1_loc.x + 1,
-                                     predecessor_node_1_head_1_loc.y,
-                                     predecessor_node_1_head_1_loc.z),
+                                    (
+                                        predecessor_node_1_head_1_loc.x + 1,
+                                        predecessor_node_1_head_1_loc.y,
+                                        predecessor_node_1_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_1),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_1_loc.x,
-                                     predecessor_node_1_head_1_loc.y + 1,
-                                     predecessor_node_1_head_1_loc.z),
+                                    (
+                                        predecessor_node_1_head_1_loc.x,
+                                        predecessor_node_1_head_1_loc.y + 1,
+                                        predecessor_node_1_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_1),
                                 )
                             )
@@ -455,18 +482,22 @@ class QCAEnv7(gym.Env):
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_1_loc.x + 1,
-                                     predecessor_node_1_head_1_loc.y,
-                                     predecessor_node_1_head_1_loc.z),
+                                    (
+                                        predecessor_node_1_head_1_loc.x + 1,
+                                        predecessor_node_1_head_1_loc.y,
+                                        predecessor_node_1_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_2),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_1_loc.x,
-                                     predecessor_node_1_head_1_loc.y + 1,
-                                     predecessor_node_1_head_1_loc.z),
+                                    (
+                                        predecessor_node_1_head_1_loc.x,
+                                        predecessor_node_1_head_1_loc.y + 1,
+                                        predecessor_node_1_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_2),
                                 )
                             )
@@ -474,35 +505,47 @@ class QCAEnv7(gym.Env):
                         manhattan_distance_south = np.mean(manhattan_distances_south)
                         if manhattan_distance_east < manhattan_distance_south:
                             pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] = 0
-                            pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] = 1
+                            pos_pos_wires_north[predecessor_node_1_head_1_loc.x][
+                                predecessor_node_1_head_1_loc.y + 1
+                            ] = 1
                         else:
                             pos_pos_wires_west[predecessor_node_1_head_1_loc.x + 1][predecessor_node_1_head_1_loc.y] = 1
-                            pos_pos_wires_north[predecessor_node_1_head_1_loc.x][predecessor_node_1_head_1_loc.y + 1] = 0
+                            pos_pos_wires_north[predecessor_node_1_head_1_loc.x][
+                                predecessor_node_1_head_1_loc.y + 1
+                            ] = 0
 
             if predecessor_node_1_head_2 != 0:
                 predecessor_node_1_head_2_loc = self.layout.get_tile(predecessor_node_1_head_2)
-                if ((predecessor_node_1_head_2_loc.x + 1) != self.layout_width) and\
-                        ((predecessor_node_1_head_2_loc.y + 1) != self.layout_height):
-                    if (pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] == 0) and\
-                            (pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] == 0):
+                if ((predecessor_node_1_head_2_loc.x + 1) != self.layout_width) and (
+                    (predecessor_node_1_head_2_loc.y + 1) != self.layout_height
+                ):
+                    if (
+                        pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] == 0
+                    ) and (
+                        pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] == 0
+                    ):
                         manhattan_distances_east = []
                         manhattan_distances_south = []
                         if predecessor_node_2_head_1 != 0:
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_2_loc.x + 1,
-                                     predecessor_node_1_head_2_loc.y,
-                                     predecessor_node_1_head_2_loc.z),
+                                    (
+                                        predecessor_node_1_head_2_loc.x + 1,
+                                        predecessor_node_1_head_2_loc.y,
+                                        predecessor_node_1_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_1),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_2_loc.x,
-                                     predecessor_node_1_head_2_loc.y + 1,
-                                     predecessor_node_1_head_2_loc.z),
+                                    (
+                                        predecessor_node_1_head_2_loc.x,
+                                        predecessor_node_1_head_2_loc.y + 1,
+                                        predecessor_node_1_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_1),
                                 )
                             )
@@ -510,18 +553,22 @@ class QCAEnv7(gym.Env):
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_2_loc.x + 1,
-                                     predecessor_node_1_head_2_loc.y,
-                                     predecessor_node_1_head_2_loc.z),
+                                    (
+                                        predecessor_node_1_head_2_loc.x + 1,
+                                        predecessor_node_1_head_2_loc.y,
+                                        predecessor_node_1_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_2),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_1_head_2_loc.x,
-                                     predecessor_node_1_head_2_loc.y + 1,
-                                     predecessor_node_1_head_2_loc.z),
+                                    (
+                                        predecessor_node_1_head_2_loc.x,
+                                        predecessor_node_1_head_2_loc.y + 1,
+                                        predecessor_node_1_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_2_head_2),
                                 )
                             )
@@ -529,35 +576,47 @@ class QCAEnv7(gym.Env):
                         manhattan_distance_south = np.mean(manhattan_distances_south)
                         if manhattan_distance_east < manhattan_distance_south:
                             pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] = 0
-                            pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] = 1
+                            pos_pos_wires_north[predecessor_node_1_head_2_loc.x][
+                                predecessor_node_1_head_2_loc.y + 1
+                            ] = 1
                         else:
                             pos_pos_wires_west[predecessor_node_1_head_2_loc.x + 1][predecessor_node_1_head_2_loc.y] = 1
-                            pos_pos_wires_north[predecessor_node_1_head_2_loc.x][predecessor_node_1_head_2_loc.y + 1] = 0
+                            pos_pos_wires_north[predecessor_node_1_head_2_loc.x][
+                                predecessor_node_1_head_2_loc.y + 1
+                            ] = 0
 
             if predecessor_node_2_head_1 != 0:
                 predecessor_node_2_head_1_loc = self.layout.get_tile(predecessor_node_2_head_1)
-                if ((predecessor_node_2_head_1_loc.x + 1) != self.layout_width) and\
-                        ((predecessor_node_2_head_1_loc.y + 1) != self.layout_height):
-                    if (pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] == 0) and\
-                            (pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] == 0):
+                if ((predecessor_node_2_head_1_loc.x + 1) != self.layout_width) and (
+                    (predecessor_node_2_head_1_loc.y + 1) != self.layout_height
+                ):
+                    if (
+                        pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] == 0
+                    ) and (
+                        pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] == 0
+                    ):
                         manhattan_distances_east = []
                         manhattan_distances_south = []
                         if predecessor_node_1_head_1 != 0:
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_1_loc.x + 1,
-                                     predecessor_node_2_head_1_loc.y,
-                                     predecessor_node_2_head_1_loc.z),
+                                    (
+                                        predecessor_node_2_head_1_loc.x + 1,
+                                        predecessor_node_2_head_1_loc.y,
+                                        predecessor_node_2_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_1),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_1_loc.x,
-                                     predecessor_node_2_head_1_loc.y + 1,
-                                     predecessor_node_2_head_1_loc.z),
+                                    (
+                                        predecessor_node_2_head_1_loc.x,
+                                        predecessor_node_2_head_1_loc.y + 1,
+                                        predecessor_node_2_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_1),
                                 )
                             )
@@ -565,18 +624,22 @@ class QCAEnv7(gym.Env):
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_1_loc.x + 1,
-                                     predecessor_node_2_head_1_loc.y,
-                                     predecessor_node_2_head_1_loc.z),
+                                    (
+                                        predecessor_node_2_head_1_loc.x + 1,
+                                        predecessor_node_2_head_1_loc.y,
+                                        predecessor_node_2_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_2),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_1_loc.x,
-                                     predecessor_node_2_head_1_loc.y + 1,
-                                     predecessor_node_2_head_1_loc.z),
+                                    (
+                                        predecessor_node_2_head_1_loc.x,
+                                        predecessor_node_2_head_1_loc.y + 1,
+                                        predecessor_node_2_head_1_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_2),
                                 )
                             )
@@ -584,35 +647,47 @@ class QCAEnv7(gym.Env):
                         manhattan_distance_south = np.mean(manhattan_distances_south)
                         if manhattan_distance_east < manhattan_distance_south:
                             pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] = 0
-                            pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] = 1
+                            pos_pos_wires_north[predecessor_node_2_head_1_loc.x][
+                                predecessor_node_2_head_1_loc.y + 1
+                            ] = 1
                         else:
                             pos_pos_wires_west[predecessor_node_2_head_1_loc.x + 1][predecessor_node_2_head_1_loc.y] = 1
-                            pos_pos_wires_north[predecessor_node_2_head_1_loc.x][predecessor_node_2_head_1_loc.y + 1] = 0
+                            pos_pos_wires_north[predecessor_node_2_head_1_loc.x][
+                                predecessor_node_2_head_1_loc.y + 1
+                            ] = 0
 
             if predecessor_node_2_head_2 != 0:
                 predecessor_node_2_head_2_loc = self.layout.get_tile(predecessor_node_2_head_2)
-                if ((predecessor_node_2_head_2_loc.x + 1) != self.layout_width) and\
-                        ((predecessor_node_2_head_2_loc.y + 1) != self.layout_height):
-                    if (pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] == 0) and\
-                            (pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] == 0):
+                if ((predecessor_node_2_head_2_loc.x + 1) != self.layout_width) and (
+                    (predecessor_node_2_head_2_loc.y + 1) != self.layout_height
+                ):
+                    if (
+                        pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] == 0
+                    ) and (
+                        pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] == 0
+                    ):
                         manhattan_distances_east = []
                         manhattan_distances_south = []
                         if predecessor_node_1_head_1 != 0:
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_2_loc.x + 1,
-                                     predecessor_node_2_head_2_loc.y,
-                                     predecessor_node_2_head_2_loc.z),
+                                    (
+                                        predecessor_node_2_head_2_loc.x + 1,
+                                        predecessor_node_2_head_2_loc.y,
+                                        predecessor_node_2_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_1),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_2_loc.x,
-                                     predecessor_node_2_head_2_loc.y + 1,
-                                     predecessor_node_2_head_2_loc.z),
+                                    (
+                                        predecessor_node_2_head_2_loc.x,
+                                        predecessor_node_2_head_2_loc.y + 1,
+                                        predecessor_node_2_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_1),
                                 )
                             )
@@ -620,18 +695,22 @@ class QCAEnv7(gym.Env):
                             manhattan_distances_east.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_2_loc.x + 1,
-                                     predecessor_node_2_head_2_loc.y,
-                                     predecessor_node_2_head_2_loc.z),
+                                    (
+                                        predecessor_node_2_head_2_loc.x + 1,
+                                        predecessor_node_2_head_2_loc.y,
+                                        predecessor_node_2_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_2),
                                 )
                             )
                             manhattan_distances_south.append(
                                 pyfiction.manhattan_distance(
                                     self.layout,
-                                    (predecessor_node_2_head_2_loc.x,
-                                     predecessor_node_2_head_2_loc.y + 1,
-                                     predecessor_node_2_head_2_loc.z),
+                                    (
+                                        predecessor_node_2_head_2_loc.x,
+                                        predecessor_node_2_head_2_loc.y + 1,
+                                        predecessor_node_2_head_2_loc.z,
+                                    ),
                                     self.layout.get_tile(predecessor_node_1_head_2),
                                 )
                             )
@@ -639,10 +718,14 @@ class QCAEnv7(gym.Env):
                         manhattan_distance_south = np.mean(manhattan_distances_south)
                         if manhattan_distance_east < manhattan_distance_south:
                             pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] = 0
-                            pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] = 1
+                            pos_pos_wires_north[predecessor_node_2_head_2_loc.x][
+                                predecessor_node_2_head_2_loc.y + 1
+                            ] = 1
                         else:
                             pos_pos_wires_west[predecessor_node_2_head_2_loc.x + 1][predecessor_node_2_head_2_loc.y] = 1
-                            pos_pos_wires_north[predecessor_node_2_head_2_loc.x][predecessor_node_2_head_2_loc.y + 1] = 0
+                            pos_pos_wires_north[predecessor_node_2_head_2_loc.x][
+                                predecessor_node_2_head_2_loc.y + 1
+                            ] = 0
 
         mask_nodes_north = pos_pos_nodes_north.flatten(order="F") == 0
         mask_nodes_west = pos_pos_nodes_west.flatten(order="F") == 0
@@ -667,7 +750,10 @@ class QCAEnv7(gym.Env):
         return mask
 
     def place_node_with_2_inputs(self, preceding_nodes, x, y):
-        incoming_coordinate_1, incoming_coordinate_2 = self.layout.incoming_clocked_zones((x, y))
+        (
+            incoming_coordinate_1,
+            incoming_coordinate_2,
+        ) = self.layout.incoming_clocked_zones((x, y))
         if incoming_coordinate_1.y != y:
             possible_north_coordinate = incoming_coordinate_1
             possible_west_coordinate = incoming_coordinate_2
@@ -893,7 +979,10 @@ class QCAEnv7(gym.Env):
 
     def place_node_with_1_input(self, preceding_nodes, x, y, north_or_west):
         if len(self.layout.incoming_clocked_zones((x, y))) == 2:
-            incoming_coordinate_1, incoming_coordinate_2 = self.layout.incoming_clocked_zones((x, y))
+            (
+                incoming_coordinate_1,
+                incoming_coordinate_2,
+            ) = self.layout.incoming_clocked_zones((x, y))
             if incoming_coordinate_1.y != y:
                 possible_north_coordinate = incoming_coordinate_1
                 possible_west_coordinate = incoming_coordinate_2
@@ -1000,7 +1089,10 @@ class QCAEnv7(gym.Env):
 
     def place_wire(self, x, y, north_or_west):
         if len(self.layout.incoming_clocked_zones((x, y))) == 2:
-            incoming_coordinate_1, incoming_coordinate_2 = self.layout.incoming_clocked_zones((x, y))
+            (
+                incoming_coordinate_1,
+                incoming_coordinate_2,
+            ) = self.layout.incoming_clocked_zones((x, y))
             if incoming_coordinate_1.y != y:
                 possible_north_coordinate = incoming_coordinate_1
                 possible_west_coordinate = incoming_coordinate_2
@@ -1077,7 +1169,7 @@ class QCAEnv7(gym.Env):
             reward *= 1 - ((x + y) / (self.layout_width * self.layout_height))
 
         if (
-            self.placed_wires >= 10 + 2 * self.current_node # self.layout_width + self.layout_height
+            self.placed_wires >= 10 + 2 * self.current_node  # self.layout_width + self.layout_height
             and self.node_to_action[self.actions[self.current_node]] != "OUTPUT"
         ):
             output_flag = True

@@ -1,6 +1,7 @@
 import gym
 import matplotlib.pyplot as plt
 from gym import spaces
+
 # from node2vec import Node2Vec
 # from gensim.models import Word2Vec
 
@@ -259,7 +260,7 @@ class QCAEnv8(gym.Env):
                             if fanin.x != self.layout_width and fanin.y != self.layout_height:
                                 self.occupied_tiles[fanin.x][fanin.y] = 1
                             fanin = self.layout.fanins(fanin)[0]
-                self.color_route_time += (time() - start_color)
+                self.color_route_time += time() - start_color
                 if self.current_tries == self.max_tries:
                     self.placement_possible = False
 
@@ -305,7 +306,7 @@ class QCAEnv8(gym.Env):
                             if fanin.x != self.layout_width and fanin.y != self.layout_height:
                                 self.occupied_tiles[fanin.x][fanin.y] = 1
                             fanin = self.layout.fanins(fanin)[0]
-                self.color_route_time += (time() - start_color)
+                self.color_route_time += time() - start_color
                 if self.current_tries == self.max_tries:
                     self.placement_possible = False
             else:
@@ -340,7 +341,7 @@ class QCAEnv8(gym.Env):
         }
 
         info = {}
-        self.step_time += (time() - start - diff)
+        self.step_time += time() - start - diff
         self.mask_time += diff
         return observation, reward, done, info
 
@@ -409,9 +410,17 @@ class QCAEnv8(gym.Env):
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
         possible_positions_nodes = np.ones([self.layout_width, self.layout_height], dtype=int)
 
-        layout_mask = int(4 + ((self.current_node * (max(self.layout_width, self.layout_height) - 4))/len(self.actions))) + 1
-        if self.node_to_action[self.actions[self.current_node]] not in ["INPUT", "OUTPUT"] and len(preceding_nodes) != 1:
-            if not self.node_to_action[self.actions[self.current_node]] == "OUTPUT" and self.clocking_scheme == "2DDWave":
+        layout_mask = (
+            int(4 + ((self.current_node * (max(self.layout_width, self.layout_height) - 4)) / len(self.actions))) + 1
+        )
+        if (
+            self.node_to_action[self.actions[self.current_node]] not in ["INPUT", "OUTPUT"]
+            and len(preceding_nodes) != 1
+        ):
+            if (
+                not self.node_to_action[self.actions[self.current_node]] == "OUTPUT"
+                and self.clocking_scheme == "2DDWave"
+            ):
                 possible_positions_nodes[:layout_mask, :layout_mask] = 0
 
         if self.node_to_action[self.actions[self.current_node]] == "INPUT":
@@ -430,8 +439,8 @@ class QCAEnv8(gym.Env):
             if self.clocking_scheme == "2DDWave":
                 node = self.node_dict[preceding_nodes[0]]
                 loc = self.layout.get_tile(node)
-                possible_positions_nodes[self.layout_width - 1, loc.y:layout_mask] = 0
-                possible_positions_nodes[loc.x:layout_mask, self.layout_height - 1] = 0
+                possible_positions_nodes[self.layout_width - 1, loc.y : layout_mask] = 0
+                possible_positions_nodes[loc.x : layout_mask, self.layout_height - 1] = 0
             elif self.clocking_scheme == "USE":
                 possible_positions_nodes[0][:] = 0
                 possible_positions_nodes[self.layout_width - 1, 0] = 0
@@ -448,8 +457,11 @@ class QCAEnv8(gym.Env):
                     if self.layout.is_empty_tile((zone.x, zone.y, 0)) and zone.x < layout_mask and zone.y < layout_mask:
                         possible_positions_nodes[zone.x][zone.y] = 0
                 else:
-                    if self.layout.is_empty_tile(
-                            (zone.x, zone.y, 0)) and zone.x in range(0, self.layout_width) and zone.y in range(0, self.layout_height):
+                    if (
+                        self.layout.is_empty_tile((zone.x, zone.y, 0))
+                        and zone.x in range(0, self.layout_width)
+                        and zone.y in range(0, self.layout_height)
+                    ):
                         possible_positions_nodes[zone.x][zone.y] = 0
 
         elif len(preceding_nodes) == 2:
@@ -471,19 +483,39 @@ class QCAEnv8(gym.Env):
 
         for node in self.node_dict:
             if not self.layout.is_po_tile(self.layout.get_tile(self.node_dict[node])):
-                if (self.layout.fanout_size(self.node_dict[node]) == 0) or \
-                        (self.layout.fanout_size(self.node_dict[node]) == 1 and self.network.is_fanout(node)):
+                if (self.layout.fanout_size(self.node_dict[node]) == 0) or (
+                    self.layout.fanout_size(self.node_dict[node]) == 1 and self.network.is_fanout(node)
+                ):
                     possible = False
                     tile = self.layout.get_tile(self.node_dict[node])
                     for zone in self.layout.outgoing_clocked_zones(tile):
-                        if self.layout.is_empty_tile((zone.x, zone.y, 0)) and zone.x != self.layout_width and zone.y != self.layout_height:
+                        if (
+                            self.layout.is_empty_tile((zone.x, zone.y, 0))
+                            and zone.x != self.layout_width
+                            and zone.y != self.layout_height
+                        ):
                             possible = True
-                        elif self.layout.is_empty_tile((zone.x, zone.y, 1)) and zone.x != self.layout_width and zone.y != self.layout_height:
+                        elif (
+                            self.layout.is_empty_tile((zone.x, zone.y, 1))
+                            and zone.x != self.layout_width
+                            and zone.y != self.layout_height
+                        ):
                             if self.layout.get_node((zone.x, zone.y, 0)) not in self.node_dict.values():
                                 possible = True
                     params = pyfiction.a_star_params()
                     params.crossings = True
-                    if len(pyfiction.a_star(self.layout, tile, (layout_mask, layout_mask), params)) == 0 and self.clocking_scheme == "2DDWave":
+                    if (
+                        len(
+                            pyfiction.a_star(
+                                self.layout,
+                                tile,
+                                (layout_mask, layout_mask),
+                                params,
+                            )
+                        )
+                        == 0
+                        and self.clocking_scheme == "2DDWave"
+                    ):
                         possible = False
                     if not possible:
                         self.placement_possible = False
@@ -491,15 +523,11 @@ class QCAEnv8(gym.Env):
         mask = possible_positions_nodes.flatten(order="F") == 0
         if not any(mask):
             self.placement_possible = False
-        self.mask_time += (time() - start)
+        self.mask_time += time() - start
         return [mask[i] & mask_occupied[i] for i in range(len(mask))]
 
     def calculate_reward(self, x, y, placed_node):
-        reward = (
-            10000
-            if self.current_node == len(self.actions)
-            else placed_node
-        )
+        reward = 10000 if self.current_node == len(self.actions) else placed_node
         if placed_node and self.clocking_scheme == "2DDWave":
             reward *= 1 - ((x + y) / (self.layout_width * self.layout_height))
 

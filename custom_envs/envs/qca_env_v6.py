@@ -12,7 +12,13 @@ from time import time
 class QCAEnv6(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, layout_width=7, layout_height=7, benchmark="trindade16", function="FA"):
+    def __init__(
+        self,
+        layout_width=7,
+        layout_height=7,
+        benchmark="trindade16",
+        function="FA",
+    ):
         self.layout_width = layout_width
         self.layout_height = layout_height
         self.layout = pyfiction.cartesian_gate_layout((self.layout_width - 1, self.layout_height - 1, 1), "2DDWave")
@@ -169,7 +175,12 @@ class QCAEnv6(gym.Env):
                     "FAN-OUT",
                     "OUTPUT",
                 ]:  # INVERTER
-                    self.place_node_with_1_input(preceding_nodes=preceding_nodes, x=x, y=y, north_or_west=north_or_west)
+                    self.place_node_with_1_input(
+                        preceding_nodes=preceding_nodes,
+                        x=x,
+                        y=y,
+                        north_or_west=north_or_west,
+                    )
 
                 else:
                     raise Exception(f"Not a valid node: {self.node_to_action[self.actions[self.current_node]]}")
