@@ -9,7 +9,9 @@ from torch import nn
 from torch.distributions import Categorical
 from torch.distributions.utils import logits_to_probs
 
-SelfMaskableCategoricalDistribution = TypeVar("SelfMaskableCategoricalDistribution", bound="MaskableCategoricalDistribution")
+SelfMaskableCategoricalDistribution = TypeVar(
+    "SelfMaskableCategoricalDistribution", bound="MaskableCategoricalDistribution"
+)
 SelfMaskableMultiCategoricalDistribution = TypeVar(
     "SelfMaskableMultiCategoricalDistribution", bound="MaskableMultiCategoricalDistribution"
 )
