@@ -59,8 +59,9 @@ To register the environment, install the package locally:
 You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py``or simply use the tool in the command line.
 
 ```
-$ main.py -h
-usage: main.py [-h] [-b] [-f] [-c] [-t] [-lw] [-lh] [-ts] [-m] [-s] [-v]
+(venv) $ python main.py -h
+usage: main.py [-h] [-b {fontes18,trindade16,EPFL,TOY,ISCAS85}] [-f FUNCTION] [-c {2DDWave,USE}] [-t {QCA,SiDB}] [-l] [-lw LAYOUT_WIDTH] [-lh LAYOUT_HEIGHT] [-ts TIME_STEPS] [-r] [-v {0,1}]
+
 
 Optional arguments:
   -h, --help                       Show this help message and exit.
