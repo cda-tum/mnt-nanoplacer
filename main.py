@@ -10,14 +10,17 @@ from argparse import ArgumentParser
 env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
 technology = "QCA"
+minimal_layout_dimension = True  # if False, user specified layout dimensions are chosen
 layout_width = 200
 layout_height = 200
 benchmark = "fontes18"
 function = "parity"
 time_steps = 1000000
-mode = "INIT"  # "INIT", "TRAIN"
-save = True
-verbose = 0
+reset_model = False
+verbose = 0  # 0: Only show number of placed gates
+#              1: print layout after every new best placement
+#              2: print training metrics
+#              3: print layout and training metrics
 
 
 if __name__ == "__main__":
@@ -45,6 +48,12 @@ if __name__ == "__main__":
         default=technology,
     )
     parser.add_argument(
+        "-l",
+        "--minimal_layout_dimension",
+        action="store_true",
+        default=minimal_layout_dimension,
+    )
+    parser.add_argument(
         "-lw",
         "--layout_width",
         type=int,
@@ -59,10 +68,12 @@ if __name__ == "__main__":
         default=layout_height,
     )
     parser.add_argument("-ts", "--time_steps", type=int, default=time_steps)
-    parser.add_argument("-m", "--mode", type=str, choices=["INIT", "TRAIN"], default=mode)
-    parser.add_argument("-s", "--save", action="store_true", default=save)
+    parser.add_argument("-r", "--reset_model", action="store_true", default=reset_model)
     parser.add_argument("-v", "--verbose", type=int, choices=[0, 1], default=verbose)
     args = parser.parse_args()
+
+    if args.minimal_layout_dimension:
+        pass
     print(args)
 
     env = gym.make(
@@ -73,21 +84,20 @@ if __name__ == "__main__":
         layout_height=args.layout_height,
         benchmark=args.benchmark,
         function=args.function,
-        verbose=args.verbose,
-        # disable_env_checker=True,
+        verbose=1 if args.verbose in (1, 3) else 0,
     )
-    if args.mode == "INIT":
+    if args.reset_model or not os.path.exists(f"ppo_fiction_v8_{args.technology}_{args.function}_{args.clocking_scheme}"):
         model = MaskablePPO(
             "MlpPolicy",
             env,
             batch_size=512,
-            verbose=args.verbose,
+            verbose=1 if args.verbose (2, 3) else 0,
             gamma=0.995,
             learning_rate=0.001,
             tensorboard_log=f"./tensorboard/{args.function}/",
         )
         reset_num_timesteps = True
-    elif args.mode == "TRAIN":
+    else:
         model = MaskablePPO.load(
             os.path.join(
                 "models",
@@ -96,8 +106,6 @@ if __name__ == "__main__":
             env,
         )
         reset_num_timesteps = False
-    else:
-        raise Exception
 
     model.learn(
         total_timesteps=args.time_steps,
@@ -106,13 +114,12 @@ if __name__ == "__main__":
     )
     # env.plot_placement_times()
 
-    if args.save:
-        model.save(
-            os.path.join(
-                "models",
-                f"ppo_fiction_{args.technology}_{args.function}_{args.clocking_scheme}",
-            )
+    model.save(
+        os.path.join(
+            "models",
+            f"ppo_fiction_{args.technology}_{args.function}_{args.clocking_scheme}",
         )
+    )
 
     # reset environment
     obs = env.reset()
@@ -125,7 +132,7 @@ if __name__ == "__main__":
         # Predict coordinate for next gate based on the gate to be placed and the action mask
         action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
 
-        # place gate, route it and recieve reward of +1 if sucessfull, 0 else
+        # place gate, route it and receive reward of +1 if successful, 0 else
         # placement is terminated if no further feasible placement is possible
         obs, reward, terminated, info = env.step(action)
 

@@ -370,9 +370,6 @@ class NanoPlacementEnv(gym.Env):
         info = {}
         return observation, reward, done, info
 
-    def render(self):
-        print(self.layout)
-
     def create_cell_layout(self):
         if self.technology == "QCA":
             try:
