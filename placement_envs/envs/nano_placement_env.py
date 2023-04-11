@@ -23,8 +23,9 @@ class NanoPlacementEnv(gym.Env):
         verbose=1,
     ):
         self.last_pos = None
-        self.clocking_scheme = clocking_scheme
         self.technology = technology
+        self.clocking_scheme = "2DDWave" if self.technology == "SiDB" else clocking_scheme
+
         self.layout_width = layout_width
         self.layout_height = layout_height
 
