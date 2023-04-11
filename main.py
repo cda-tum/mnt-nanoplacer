@@ -10,15 +10,15 @@ from placement_envs.utils import layout_dimensions
 
 env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
-technology = "QCA"
+technology = "SiDB"
 minimal_layout_dimension = True  # if False, user specified layout dimensions are chosen
 layout_width = 200
 layout_height = 200
 benchmark = "trindade16"
-function = "FA"
-time_steps = 1000000
+function = "mux21"
+time_steps = 10000
 reset_model = False
-verbose = 0  # 0: Only show number of placed gates
+verbose = 3  # 0: Only show number of placed gates
 #              1: print layout after every new best placement
 #              2: print training metrics
 #              3: print layout and training metrics

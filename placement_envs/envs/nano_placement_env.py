@@ -12,8 +12,6 @@ from utils import *
 
 
 class NanoPlacementEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
-
     def __init__(
         self,
         clocking_scheme="2DDWave",
@@ -30,16 +28,15 @@ class NanoPlacementEnv(gym.Env):
         self.layout_width = layout_width
         self.layout_height = layout_height
 
-        if self.technology == "QCA":
-            self.layout = pyfiction.cartesian_obstruction_layout(
-                pyfiction.cartesian_gate_layout(
-                    (self.layout_width - 1, self.layout_height - 1, 1),
-                    self.clocking_scheme,
-                )
+        self.layout = pyfiction.cartesian_obstruction_layout(
+            pyfiction.cartesian_gate_layout(
+                (self.layout_width - 1, self.layout_height - 1, 1),
+                self.clocking_scheme,
             )
-        elif self.technology == "SiDB":
-            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1), self.layout_height)[1]
-            hex_width = to_hex((self.layout_width - 1, 0), self.layout_height)[0]
+        )
+        if self.technology == "SiDB":
+            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1, 0), self.layout_height)[1]
+            hex_width = to_hex((self.layout_width - 1, 0, 0), self.layout_height)[0]
             self.hex_layout = pyfiction.hexagonal_gate_layout(
                 (hex_width, hex_height, 1),
                 "ROW",
@@ -76,16 +73,15 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask = 8
 
     def reset(self, seed=None, options=None):
-        if self.technology == "QCA":
-            self.layout = pyfiction.cartesian_obstruction_layout(
-                pyfiction.cartesian_gate_layout(
-                    (self.layout_width - 1, self.layout_height - 1, 1),
-                    self.clocking_scheme,
-                )
+        self.layout = pyfiction.cartesian_obstruction_layout(
+            pyfiction.cartesian_gate_layout(
+                (self.layout_width - 1, self.layout_height - 1, 1),
+                self.clocking_scheme,
             )
-        elif self.technology == "SiDB":
-            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1), self.layout_height)[1]
-            hex_width = to_hex((self.layout_width - 1, 0), self.layout_height)[0]
+        )
+        if self.technology == "SiDB":
+            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1, 0), self.layout_height)[1]
+            hex_width = to_hex((self.layout_width - 1, 0, 0), self.layout_height)[0]
             self.hex_layout = pyfiction.hexagonal_gate_layout(
                 (hex_width, hex_height, 1),
                 "ROW",
@@ -113,10 +109,7 @@ class NanoPlacementEnv(gym.Env):
         x = action[0]
         y = action[1]
 
-        x_hex, y_hex = to_hex((x, y), self.layout_height)
-
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
-        obstruct_coordinates = False
 
         if not self.placement_possible or not self.layout.is_empty_tile((x, y)):
             done = True
@@ -125,8 +118,6 @@ class NanoPlacementEnv(gym.Env):
             placed_node = 0
             if self.node_to_action[self.actions[self.current_node]] == "INPUT":
                 self.layout.create_pi(f"x{self.actions[self.current_node]}", (x, y))
-                if self.technology == "SiDB":
-                    self.hex_layout.create_pi(f"x{self.actions[self.current_node]}", (x_hex, y_hex))
                 placed_node = 1
             elif self.node_to_action[self.actions[self.current_node]] in [
                 "AND",
@@ -144,32 +135,12 @@ class NanoPlacementEnv(gym.Env):
                 layout_tile_2 = self.layout.get_tile(layout_node_2)
                 signal_2 = self.layout.make_signal(layout_node_2)
 
-                if self.technology == "SiDB":
-                    layout_node_1_hex = self.node_dict_hex[preceding_nodes[0]]
-                    layout_tile_1_hex = self.hex_layout.get_tile(layout_node_1_hex)
-                    signal_1_hex = self.hex_layout.make_signal(layout_node_1_hex)
-
-                    layout_node_2_hex = self.node_dict_hex[preceding_nodes[1]]
-                    layout_tile_2_hex = self.hex_layout.get_tile(layout_node_2_hex)
-                    signal_2_hex = self.hex_layout.make_signal(layout_node_2_hex)
-
                 if self.current_tries == 0:
                     self.place_node_with_2_inputs(x=x, y=y, signal_1=signal_1, signal_2=signal_2)
                     self.layout.move_node(self.layout.get_node((x, y)), (x, y), [])
-
-                    if self.technology == "SiDB":
-                        self.place_node_with_2_inputs_hex(
-                            x=x_hex,
-                            y=y_hex,
-                            signal_1=signal_1_hex,
-                            signal_2=signal_2_hex,
-                        )
-                        self.hex_layout.move_node(self.hex_layout.get_node((x_hex, y_hex)), (x_hex, y_hex), [])
                 else:
                     self.layout.move_node(self.layout.get_node(self.last_pos), (x, y), [])
 
-                    if self.technology == "SiDB":
-                        self.hex_layout.move_node(self.hex_layout.get_node((x_hex, y_hex)), (x_hex, y_hex), [])
                 self.last_pos = (x, y)
 
                 params = pyfiction.a_star_params()
@@ -191,11 +162,6 @@ class NanoPlacementEnv(gym.Env):
                         for el in path_node_1:
                             self.occupied_tiles[el.x][el.y] = 1
 
-                        if self.technology == "SiDB":
-                            hex_path_1 = [to_hex(coord, self.layout_height) for coord in path_node_1]
-                            hex_path_2 = [to_hex(coord, self.layout_height) for coord in path_node_2]
-                            pyfiction.route_path(self.hex_layout, hex_path_1)
-                            pyfiction.route_path(self.hex_layout, hex_path_2)
                     else:
                         self.current_tries += 1
                         for el in path_node_1:
@@ -219,18 +185,10 @@ class NanoPlacementEnv(gym.Env):
                 layout_tile = self.layout.get_tile(layout_node)
                 signal = self.layout.make_signal(layout_node)
 
-                if self.technology == "SiDB":
-                    layout_node_hex = self.node_dict_hex[preceding_nodes[0]]
-                    layout_tile_hex = self.hex_layout.get_tile(layout_node_hex)
-                    signal_hex = self.hex_layout.make_signal(layout_node_hex)
-
                 if self.current_tries == 0:
                     self.place_node_with_1_input(x, y, signal)
                     self.layout.move_node(self.layout.get_node((x, y)), (x, y), [])
 
-                    if self.technology == "SiDB":
-                        self.place_node_with_1_input_hex(x_hex, y_hex, signal_hex)
-                        self.hex_layout.move_node(self.hex_layout.get_node((x_hex, y_hex)), (x_hex, y_hex), [])
                 else:
                     self.layout.move_node(self.layout.get_node(self.last_pos), (x, y), [])
                 self.last_pos = (x, y)
@@ -251,10 +209,6 @@ class NanoPlacementEnv(gym.Env):
                             self.occupied_tiles[fanin.x][fanin.y] = 1
                             fanin = self.layout.fanins(fanin)[0]
 
-                    if self.technology == "SiDB":
-                        hex_path = [to_hex(coord, self.layout_height) for coord in path]
-                        pyfiction.route_path(self.hex_layout, hex_path)
-
                 if self.current_tries == self.max_tries:
                     self.placement_possible = False
             else:
@@ -262,20 +216,12 @@ class NanoPlacementEnv(gym.Env):
 
             self.node_dict[self.actions[self.current_node]] = self.layout.get_node((x, y))
 
-            if self.technology == "SiDB":
-                self.node_dict_hex[self.actions[self.current_node]] = self.hex_layout.get_node((x_hex, y_hex))
             if placed_node:
                 self.current_node += 1
                 self.occupied_tiles[x][y] = 1
                 self.gates[x][y] = 1
                 self.layout.obstruct_coordinate((x, y, 0))
                 self.layout.obstruct_coordinate((x, y, 1))
-            if obstruct_coordinates:
-                for coordinate in list(zip(*np.where(self.gates == 1))):
-                    if not self.layout.is_obstructed_coordinate(coordinate + (1,)):
-                        self.layout.obstruct_coordinate(coordinate + (1,))
-                    if not self.layout.is_obstructed_coordinate(coordinate + (0,)):
-                        self.layout.obstruct_coordinate(coordinate + (0,))
 
             reward, done = self.calculate_reward(
                 x=x,
@@ -296,16 +242,20 @@ class NanoPlacementEnv(gym.Env):
                 params.simple = True if len(self.actions) > 200 else False
                 pyfiction.write_qca_layout_svg(
                     cell_layout,
-                    os.path.join("images", f"{self.function}_{self.clocking_scheme}_rl.svg"),
+                    os.path.join("images", f"{self.function}_{self.clocking_scheme}_qca.svg"),
                     params,
                 )
-            except:
-                print("Could not create cell layout.")
+            finally:
                 pass
         elif self.technology == "SiDB":
             try:
-                pyfiction.write_dot_layout(self.hex_layout, "parity_hex.dot")
-            except:
+                self.hex_layout = cartesian_to_hexagonal(
+                    self.layout, self.layout_width, self.layout_height, self.hex_layout
+                )
+                pyfiction.write_dot_layout(
+                    self.hex_layout, os.path.join("images", f"{self.function}_{self.clocking_scheme}_sidb.dot")
+                )
+            finally:
                 pass
 
     def plot_placement_times(self):
@@ -575,3 +525,6 @@ class NanoPlacementEnv(gym.Env):
                 self.min_drvs = drvs
 
         return reward, done
+
+    def render(self, mode="human"):
+        pass

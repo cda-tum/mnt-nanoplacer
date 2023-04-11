@@ -90,14 +90,3 @@ def create_action_list(benchmark, function):
         else:
             raise Exception(f"{action}")
     return network, node_to_action, actions, DG
-
-
-def to_hex(old_coord, layout_height):
-    if isinstance(old_coord, tuple):
-        old_x, old_y = old_coord
-    else:
-        old_x = old_coord.x
-        old_y = old_coord.y
-    y = old_x + old_y
-    x = old_x + math.ceil(math.floor(layout_height / 2) - y / 2)
-    return x, y
