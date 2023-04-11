@@ -53,7 +53,7 @@ After succesfully installing pyfiction, clone this repository and install the de
 
 To register the environment, install the package locally:
 ```console
-(venv) $ pip install --e .
+(venv) $ pip install -e .
 ```
 
 You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py``or simply use the tool in the command line.
