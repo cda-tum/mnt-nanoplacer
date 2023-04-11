@@ -60,6 +60,24 @@ To register the environment, install the package locally:
 
 You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py``or simply use the tool in the command line.
 
+```
+$ main.py -h
+usage: main.py [-h] [-b] [-f] [-c] [-t] [-lw] [-lh] [-ts] [-m] [-s] [-v]
+
+Optional arguments:
+  -h, --help         Show this help message and exit.
+  -b, --benchmark    Benchmark set.
+  -f, --function     Logic function to generate layout for.
+  -c, --clocking_scheme  Underlying clocking scheme.
+  -t, --technology          Underlying technology (QCA or SiDB).
+  -lw, --layout_width   Layout width.
+  -lh, --layout_height  Layout height.
+  -ts, --time_steps     Number of time steps to train the RL agent.
+  -m,  --mode           "INIT" for instantiating new model, "TRAIN" for using exisiting model.
+  -s,  --save           Save trained model.
+  -v,  --verbosity      
+```
+
 # Repository Structure
 
 ```
