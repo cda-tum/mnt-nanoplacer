@@ -5,8 +5,6 @@
 NanoPlaceR is a tool for the physical design of FCN circuitry based on Reinforcement Learning.
 It can generate layouts for logic networks up to ~200 gates, while requiring ~50% less area than the state-of-the-art heuristic approach.
 
-## Reinforcement Learning Model (referred to as "RL")
-
 Inspired by recent developments in the field of machine learning-aided design automation, this tool combines reinforcement learning with efficient path routing algorithms based on established algorithms such as A* search. 
 Masked Proximal Policy Optimization (PPO) is used to learn the placement of logic elements, which is further accelerated by incorporating an action mask computed based on the netlist structure and the last partial placement, ensuring valid and compact solutions. 
 To minimize the occurrence of unpromising partial placements, several checks constantly ensure the early termination of sub-par solutions. 
