@@ -87,6 +87,9 @@ Optional arguments:
 ├── placement_envs/
 │ ├── envs/
 │   └── nano_placement_env/           # placement environment
+│ ├── utils/
+│   └── placement_utils/              # placement util functions
+│   └── layout_dimenions/             # predefined layout dimensions for certain functions
 ├── ppo_masked/                       # ppo mask implementation adapted from sb3-contrib
 ├── tensorboard/                      # tensorboard log directory
 ```
