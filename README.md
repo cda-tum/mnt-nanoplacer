@@ -38,8 +38,8 @@ NanoPlaceR heavily depends on fiction, whose python binding currently has to be 
 To install fiction and build it, run the following commands:
 ```console
 (venv) $ git clone -b pyml --single-branch --recursive https://github.com/marcelwa/fiction.git
-(venv) $ git submodule update --init --recursive
 (venv) $ cd fiction
+(venv) $ git submodule update --init --recursive
 (venv) $ pip install .
 (venv) $ cd ..
 ```
