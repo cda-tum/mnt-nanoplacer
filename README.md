@@ -25,7 +25,7 @@ First, install virtualenv:
 $ pip install virtualenv
 ```
 
-Then create a new virtual environment in your your project folder and acitvate it:
+Then create a new virtual environment in your your project folder and activate it:
 
 ```console
 $ mkdir nano_placement
