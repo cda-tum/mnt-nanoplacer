@@ -13,7 +13,7 @@ To minimize the occurrence of unpromising partial placements, several checks con
 Furthermore, the routing of placed gates is incorporated directly into the placement step using established routing strategies.
 The following figure outlines the methodology:
 
-![](https://raw.githubusercontent.com/cda-tum/NanoPlaceR/main/images/lbr.png)
+![](images/lbr.png)
 
 
 # Usage of NanoPlaceR
