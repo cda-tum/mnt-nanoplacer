@@ -31,7 +31,7 @@ Then create a new virtual environment in your your project folder and activate i
 $ mkdir nano_placement
 $ cd nano_placement
 $ python -m venv venv
-$ source env/bin/activate
+$ source venv/bin/activate
 ```
 
 NanoPlaceR heavily depends on fiction, whose python binding currently has to be installed from source (will be available as a python package in the future).
