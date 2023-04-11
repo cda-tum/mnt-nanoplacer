@@ -159,7 +159,10 @@ class NanoPlacementEnv(gym.Env):
 
                     if self.technology == "SiDB":
                         self.place_node_with_2_inputs_hex(
-                            x=x_hex, y=y_hex, signal_1=signal_1_hex, signal_2=signal_2_hex
+                            x=x_hex,
+                            y=y_hex,
+                            signal_1=signal_1_hex,
+                            signal_2=signal_2_hex,
                         )
                         self.hex_layout.move_node(self.hex_layout.get_node((x_hex, y_hex)), (x_hex, y_hex), [])
                 else:

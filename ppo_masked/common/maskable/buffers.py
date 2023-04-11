@@ -52,7 +52,15 @@ class MaskableRolloutBuffer(RolloutBuffer):
         gamma: float = 0.99,
         n_envs: int = 1,
     ):
-        super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs)
+        super().__init__(
+            buffer_size,
+            observation_space,
+            action_space,
+            device,
+            gae_lambda,
+            gamma,
+            n_envs,
+        )
         self.action_masks = None
 
     def reset(self) -> None:
@@ -154,7 +162,15 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
         n_envs: int = 1,
     ):
         self.action_masks = None
-        super().__init__(buffer_size, observation_space, action_space, device, gae_lambda, gamma, n_envs=n_envs)
+        super().__init__(
+            buffer_size,
+            observation_space,
+            action_space,
+            device,
+            gae_lambda,
+            gamma,
+            n_envs=n_envs,
+        )
 
     def reset(self) -> None:
         if isinstance(self.action_space, spaces.Discrete):
@@ -188,7 +204,14 @@ class MaskableDictRolloutBuffer(DictRolloutBuffer):
             for key, obs in self.observations.items():
                 self.observations[key] = self.swap_and_flatten(obs)
 
-            _tensor_names = ["actions", "values", "log_probs", "advantages", "returns", "action_masks"]
+            _tensor_names = [
+                "actions",
+                "values",
+                "log_probs",
+                "advantages",
+                "returns",
+                "action_masks",
+            ]
 
             for tensor in _tensor_names:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])

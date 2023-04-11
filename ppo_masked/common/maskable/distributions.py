@@ -13,7 +13,8 @@ SelfMaskableCategoricalDistribution = TypeVar(
     "SelfMaskableCategoricalDistribution", bound="MaskableCategoricalDistribution"
 )
 SelfMaskableMultiCategoricalDistribution = TypeVar(
-    "SelfMaskableMultiCategoricalDistribution", bound="MaskableMultiCategoricalDistribution"
+    "SelfMaskableMultiCategoricalDistribution",
+    bound="MaskableMultiCategoricalDistribution",
 )
 
 
@@ -206,7 +207,8 @@ class MaskableMultiCategoricalDistribution(MaskableDistribution):
 
         # Extract each discrete action and compute log prob for their respective distributions
         return th.stack(
-            [dist.log_prob(action) for dist, action in zip(self.distributions, th.unbind(actions, dim=1))], dim=1
+            [dist.log_prob(action) for dist, action in zip(self.distributions, th.unbind(actions, dim=1))],
+            dim=1,
         ).sum(dim=1)
 
     def entropy(self) -> th.Tensor:

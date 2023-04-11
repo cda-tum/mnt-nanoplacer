@@ -32,14 +32,22 @@ if __name__ == "__main__":
         type=str,
         choices=["fontes18", "trindade16", "EPFL", "TOY", "ISCAS85"],
         default=benchmark,
+        help="Benchmark set.",
     )
-    parser.add_argument("-f", "--function", type=str, default=function)
+    parser.add_argument(
+        "-f",
+        "--function",
+        type=str,
+        default=function,
+        help="Logic function to generate layout for.",
+    )
     parser.add_argument(
         "-c",
         "--clocking_scheme",
         type=str,
         choices=["2DDWave", "USE"],
         default=clocking_scheme,
+        help="Underlying clocking scheme.",
     )
     parser.add_argument(
         "-t",
@@ -47,28 +55,51 @@ if __name__ == "__main__":
         type=str,
         choices=["QCA", "SiDB"],
         default=technology,
+        help="Underlying technology (QCA or SiDB).",
     )
     parser.add_argument(
         "-l",
         "--minimal_layout_dimension",
         action="store_true",
         default=minimal_layout_dimension,
+        help="If True, experimentally found minimal layout dimensions are used.",
     )
     parser.add_argument(
         "-lw",
         "--layout_width",
         type=int,
         default=layout_width,
+        help="User defined layout width.",
     )
     parser.add_argument(
         "-lh",
         "--layout_height",
         type=int,
         default=layout_height,
+        help="User defined layout height.",
     )
-    parser.add_argument("-ts", "--time_steps", type=int, default=time_steps)
-    parser.add_argument("-r", "--reset_model", action="store_true", default=reset_model)
-    parser.add_argument("-v", "--verbose", type=int, choices=[0, 1], default=verbose)
+    parser.add_argument(
+        "-ts",
+        "--time_steps",
+        type=int,
+        default=time_steps,
+        help="Number of time steps to train the RL agent.",
+    )
+    parser.add_argument(
+        "-r",
+        "--reset_model",
+        action="store_true",
+        default=reset_model,
+        help="If True, reset saved model and train from scratch.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        type=int,
+        choices=[0, 1],
+        default=verbose,
+        help="0: No information. 1: Print layout after every new best placement. 2: Print training metrics. 3: 1 and 2 combined.",
+    )
     args = parser.parse_args()
 
     if args.minimal_layout_dimension and args.function in layout_dimensions[args.clocking_scheme][args.benchmark]:
@@ -86,7 +117,9 @@ if __name__ == "__main__":
         function=args.function,
         verbose=1 if args.verbose in (1, 3) else 0,
     )
-    if args.reset_model or not os.path.exists(f"ppo_fiction_v8_{args.technology}_{args.function}_{args.clocking_scheme}"):
+    if args.reset_model or not os.path.exists(
+        f"ppo_fiction_v8_{args.technology}_{args.function}_{args.clocking_scheme}"
+    ):
         model = MaskablePPO(
             "MlpPolicy",
             env,
