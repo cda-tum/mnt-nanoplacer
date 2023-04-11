@@ -45,7 +45,7 @@ if __name__ == "__main__":
         "-c",
         "--clocking_scheme",
         type=str,
-        choices=["2DDWave", "USE"],
+        choices=["2DDWave", "USE", "RES"],
         default=clocking_scheme,
         help="Underlying clocking scheme.",
     )
@@ -98,7 +98,8 @@ if __name__ == "__main__":
         type=int,
         choices=[0, 1],
         default=verbose,
-        help="0: No information. 1: Print layout after every new best placement. 2: Print training metrics. 3: 1 and 2 combined.",
+        help="0: No information. 1: Print layout after every new best placement. "
+        "2: Print training metrics. 3: 1 and 2 combined.",
     )
     args = parser.parse_args()
 
