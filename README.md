@@ -1,14 +1,4 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-# [![CodeCov](https://github.com/cda-tum/MQTPredictor/actions/workflows/coverage.yml/badge.svg)](https://github.com/cda-tum/MQTPredictor/actions/workflows/coverage.yml)
-# [![Deploy to PyPI](https://github.com/cda-tum/MQTPredictor/actions/workflows/deploy.yml/badge.svg)](https://github.com/cda-tum/MQTPredictor/actions/workflows/deploy.yml)
-# [![codecov](https://codecov.io/gh/cda-tum/MQTPredictor/branch/main/graph/badge.svg?token=ZL5js1wjrB)](https://codecov.io/gh/cda-tum/MQTPredictor)
-
-# <p align="center">
-# <picture>
-#   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cda-tum/mqtpredictor/main/img/mqt_light.png" width="60%">
-#   <img src="https://raw.githubusercontent.com/cda-tum/mqtpredictor/main/img/mqt_dark.png" width="60%">
-# </picture>
-# </p>
 
 # NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
 
