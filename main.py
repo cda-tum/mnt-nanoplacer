@@ -5,6 +5,7 @@ from ppo_masked import MaskablePPO
 from ppo_masked.common.maskable.utils import get_action_masks
 import placement_envs
 from argparse import ArgumentParser
+from placement_envs.utils import layout_dimensions
 
 
 env_id = "placement_envs/NanoPlacementEnv-v0"
@@ -13,8 +14,8 @@ technology = "QCA"
 minimal_layout_dimension = True  # if False, user specified layout dimensions are chosen
 layout_width = 200
 layout_height = 200
-benchmark = "fontes18"
-function = "parity"
+benchmark = "trindade16"
+function = "FA"
 time_steps = 1000000
 reset_model = False
 verbose = 0  # 0: Only show number of placed gates
@@ -57,14 +58,12 @@ if __name__ == "__main__":
         "-lw",
         "--layout_width",
         type=int,
-        choices=range(1, 1000),
         default=layout_width,
     )
     parser.add_argument(
         "-lh",
         "--layout_height",
         type=int,
-        choices=range(1, 1000),
         default=layout_height,
     )
     parser.add_argument("-ts", "--time_steps", type=int, default=time_steps)
@@ -72,9 +71,10 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", type=int, choices=[0, 1], default=verbose)
     args = parser.parse_args()
 
-    if args.minimal_layout_dimension:
-        pass
-    print(args)
+    if args.minimal_layout_dimension and args.function in layout_dimensions[args.clocking_scheme][args.benchmark]:
+        args.layout_width, args.layout_height = layout_dimensions[args.clocking_scheme][args.benchmark][args.function]
+    else:
+        raise Exception(f"No predefined layout dimensions for {args.function} available")
 
     env = gym.make(
         env_id,
@@ -91,7 +91,7 @@ if __name__ == "__main__":
             "MlpPolicy",
             env,
             batch_size=512,
-            verbose=1 if args.verbose (2, 3) else 0,
+            verbose=1 if args.verbose in (2, 3) else 0,
             gamma=0.995,
             learning_rate=0.001,
             tensorboard_log=f"./tensorboard/{args.function}/",

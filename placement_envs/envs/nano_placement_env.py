@@ -1,14 +1,14 @@
 import gym
 import matplotlib.pyplot as plt
 from gym import spaces
-import math
 
 import os
 import collections
-import networkx as nx
 import numpy as np
 from fiction import pyfiction
-from time import time, sleep
+from time import time
+
+from utils import *
 
 
 class NanoPlacementEnv(gym.Env):
@@ -38,8 +38,8 @@ class NanoPlacementEnv(gym.Env):
                 )
             )
         elif self.technology == "SiDB":
-            hex_height = self.to_hex((self.layout_width - 1, self.layout_height - 1))[1]
-            hex_width = self.to_hex((self.layout_width - 1, 0))[0]
+            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1), self.layout_height)[1]
+            hex_width = to_hex((self.layout_width - 1, 0), self.layout_height)[0]
             self.hex_layout = pyfiction.hexagonal_gate_layout(
                 (hex_width, hex_height, 1),
                 "ROW",
@@ -54,7 +54,7 @@ class NanoPlacementEnv(gym.Env):
             self.node_to_action,
             self.actions,
             self.DG,
-        ) = self.create_action_list(self.benchmark, self.function)
+        ) = create_action_list(self.benchmark, self.function)
         self.observation_space = spaces.Discrete(max(self.actions))
 
         self.action_space = spaces.Discrete(self.layout_width * self.layout_height)
@@ -75,91 +75,6 @@ class NanoPlacementEnv(gym.Env):
         self.verbose = verbose
         self.layout_mask = 8
 
-    def to_hex(self, old_coord):
-        if isinstance(old_coord, tuple):
-            old_x, old_y = old_coord
-        else:
-            old_x = old_coord.x
-            old_y = old_coord.y
-        y = old_x + old_y
-        x = old_x + math.ceil(math.floor(self.layout_height / 2) - y / 2)
-        return x, y
-
-    @staticmethod
-    def create_action_list(benchmark, function):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        path = os.path.join(dir_path, f"../../benchmarks/{benchmark}/{function}.v")
-        network = pyfiction.read_logic_network(path)
-        params = pyfiction.fanout_substitution_params()
-        params.strategy = pyfiction.substitution_strategy.DEPTH
-        network = pyfiction.fanout_substitution(network, params)
-
-        DG = nx.DiGraph()
-
-        # add nodes
-        DG.add_nodes_from(network.pis())
-        DG.add_nodes_from(network.pos())
-        DG.add_nodes_from(network.gates())
-
-        # add edges
-        for x in range(max(network.gates()) + 1):
-            for pre in network.fanins(x):
-                DG.add_edge(pre, x)
-
-        def topological_generations(G):
-            indegree_map = {v: d for v, d in G.in_degree() if d > 0}
-            zero_indegree = [v for v, d in G.in_degree() if d == 0]
-
-            while zero_indegree:
-                node = zero_indegree[0]
-                if len(zero_indegree) > 1:
-                    zero_indegree = zero_indegree[1:]
-                else:
-                    zero_indegree = []
-
-                for child in G.neighbors(node):
-                    indegree_map[child] -= 1
-                    if indegree_map[child] == 0:
-                        zero_indegree.insert(0, child)
-                        del indegree_map[child]
-                yield node
-
-        def topological_sort(G):
-            for generation in topological_generations(G):
-                yield generation
-
-        actions = list(topological_sort(DG))
-
-        node_to_action = {}
-        for action in actions:
-            if network.is_pi(action):
-                node_to_action[action] = "INPUT"
-            elif network.is_po(action):
-                node_to_action[action] = "OUTPUT"
-            elif network.is_inv(action):
-                node_to_action[action] = "INV"
-            elif network.is_and(action):
-                node_to_action[action] = "AND"
-            elif network.is_or(action):
-                node_to_action[action] = "OR"
-            elif network.is_nand(action):
-                node_to_action[action] = "NAND"
-            elif network.is_nor(action):
-                node_to_action[action] = "NOR"
-            elif network.is_xor(action):
-                node_to_action[action] = "XOR"
-            elif network.is_xnor(action):
-                node_to_action[action] = "XNOR"
-            elif network.is_maj(action):
-                node_to_action[action] = "MAJ"
-            elif network.is_fanout(action):
-                node_to_action[action] = "FAN-OUT"
-            elif network.is_buf(action):
-                node_to_action[action] = "BUF"
-            else:
-                raise Exception(f"{action}")
-        return network, node_to_action, actions, DG
-
     def reset(self, seed=None, options=None):
         if self.technology == "QCA":
             self.layout = pyfiction.cartesian_obstruction_layout(
@@ -169,8 +84,8 @@ class NanoPlacementEnv(gym.Env):
                 )
             )
         elif self.technology == "SiDB":
-            hex_height = self.to_hex((self.layout_width - 1, self.layout_height - 1))[1]
-            hex_width = self.to_hex((self.layout_width - 1, 0))[0]
+            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1), self.layout_height)[1]
+            hex_width = to_hex((self.layout_width - 1, 0), self.layout_height)[0]
             self.hex_layout = pyfiction.hexagonal_gate_layout(
                 (hex_width, hex_height, 1),
                 "ROW",
@@ -194,11 +109,11 @@ class NanoPlacementEnv(gym.Env):
         return observation
 
     def step(self, action):
-        action = self.map_to_multidiscrete(action, self.layout_width)
+        action = map_to_multidiscrete(action, self.layout_width)
         x = action[0]
         y = action[1]
 
-        x_hex, y_hex = self.to_hex((x, y))
+        x_hex, y_hex = to_hex((x, y), self.layout_height)
 
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
         obstruct_coordinates = False
@@ -274,8 +189,8 @@ class NanoPlacementEnv(gym.Env):
                             self.occupied_tiles[el.x][el.y] = 1
 
                         if self.technology == "SiDB":
-                            hex_path_1 = [self.to_hex(coord) for coord in path_node_1]
-                            hex_path_2 = [self.to_hex(coord) for coord in path_node_2]
+                            hex_path_1 = [to_hex(coord, self.layout_height) for coord in path_node_1]
+                            hex_path_2 = [to_hex(coord, self.layout_height) for coord in path_node_2]
                             pyfiction.route_path(self.hex_layout, hex_path_1)
                             pyfiction.route_path(self.hex_layout, hex_path_2)
                     else:
@@ -334,7 +249,7 @@ class NanoPlacementEnv(gym.Env):
                             fanin = self.layout.fanins(fanin)[0]
 
                     if self.technology == "SiDB":
-                        hex_path = [self.to_hex(coord) for coord in path]
+                        hex_path = [to_hex(coord, self.layout_height) for coord in path]
                         pyfiction.route_path(self.hex_layout, hex_path)
 
                 if self.current_tries == self.max_tries:
@@ -657,16 +572,3 @@ class NanoPlacementEnv(gym.Env):
                 self.min_drvs = drvs
 
         return reward, done
-
-    @staticmethod
-    def map_to_multidiscrete(action, layout_width):
-        b = int(action / layout_width)
-        a = action % layout_width
-        return [a, b]
-
-    @staticmethod
-    def map_to_discrete(a, b, layout_width):
-        action = 0
-        action += a
-        action += b * layout_width
-        return action
