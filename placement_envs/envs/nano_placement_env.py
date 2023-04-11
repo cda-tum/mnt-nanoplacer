@@ -11,7 +11,7 @@ from fiction import pyfiction
 from time import time, sleep
 
 
-class QCAEnv9(gym.Env):
+class NanoPlacementEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
     def __init__(

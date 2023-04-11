@@ -1,14 +1,13 @@
 import gym
 
 import os
-from sb3_contrib import MaskablePPO
-from sb3_contrib.common.maskable.utils import get_action_masks
-import torch as th
-import custom_envs
+from ppo_masked import MaskablePPO
+from ppo_masked.common.maskable.utils import get_action_masks
+import placement_envs
 from argparse import ArgumentParser
 
 
-env_id = "fiction_env/QCAEnv-v9"
+env_id = "placement_envs/NanoPlacementEnv"
 clocking_scheme = "2DDWave"
 technology = "QCA"
 layout_width = 200
@@ -77,7 +76,6 @@ if __name__ == "__main__":
         verbose=args.verbose,
         disable_env_checker=True,
     )
-    policy_kwargs = dict(activation_fn=th.nn.ReLU, net_arch=[128, 128])
     if args.mode == "INIT":
         model = MaskablePPO(
             "MultiInputPolicy",
@@ -87,7 +85,6 @@ if __name__ == "__main__":
             gamma=0.995,
             learning_rate=0.001,
             tensorboard_log=f"./tensorboard/{args.function}/",
-            # policy_kwargs = policy_kwargs,
             create_eval_env=False,
         )
         reset_num_timesteps = True
