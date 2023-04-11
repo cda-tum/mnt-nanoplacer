@@ -63,17 +63,17 @@ $ main.py -h
 usage: main.py [-h] [-b] [-f] [-c] [-t] [-lw] [-lh] [-ts] [-m] [-s] [-v]
 
 Optional arguments:
-  -h, --help         Show this help message and exit.
-  -b, --benchmark    Benchmark set.
-  -f, --function     Logic function to generate layout for.
-  -c, --clocking_scheme  Underlying clocking scheme.
-  -t, --technology          Underlying technology (QCA or SiDB).
-  -lw, --layout_width   Layout width.
-  -lh, --layout_height  Layout height.
-  -ts, --time_steps     Number of time steps to train the RL agent.
-  -m,  --mode           "INIT" for instantiating new model, "TRAIN" for using exisiting model.
-  -s,  --save           Save trained model.
-  -v,  --verbosity      
+  -h, --help                       Show this help message and exit.
+  -b, --benchmark                  Benchmark set.
+  -f, --function                   Logic function to generate layout for.
+  -c, --clocking_scheme            Underlying clocking scheme.
+  -t, --technology                 Underlying technology (QCA or SiDB).
+  -l, --minimal_layout_dimension   If True, experimentally found minimal layout dimensions are used.
+  -lw, --layout_width              User defined layout width.
+  -lh, --layout_height             User defined layout height.
+  -ts, --time_steps                Number of time steps to train the RL agent.
+  -r,  --reset_model               If True, reset saved model and train from scratch.
+  -v,  --verbosity                 0: No information. 1: Print layout after every new best placement. 2: Print training metrics. 3: 1 and 2 combined.
 ```
 
 # Repository Structure
