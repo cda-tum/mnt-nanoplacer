@@ -18,21 +18,47 @@ The following figure outlines the methodology:
 
 # Usage of NanoPlaceR
 
-First, the package must be installed:
+Currently, due to the Open-AI gym dependency, only python versions up to 3.10 are supported.
+
+If you do not have a virtual environment set up, the following steps outline one possible way to do so.
+First, install virtualenv:
 
 ```console
-(venv) $ pip install mqt.predictor
+$ pip install virtualenv
 ```
 
-```python
-from mqt.predictor import ml, rl
+Then create a new virtual environment in your your project folder and acitvate it:
 
-compiled_qc_ML, compilation_info_ML = ml.qcompile("qasm_file_path_or_QuantumCircuit")
-compiled_qc_RL, compilation_info_RL = rl.qcompile(
-    "qasm_file_path_or_QuantumCircuit", opt_objective="fidelity"
-)
+```console
+$ mkdir nano_placement
+$ cd nano_placement
+$ python -m venv venv
+$ source env/bin/activate
 ```
 
+NanoPlaceR heavily depends on fiction, whose python binding currently has to be installed from source (will be available as a python package in the future).
+To install fiction and build it, run the following commands:
+```console
+(venv) $ git clone -b pyml --single-branch --recursive https://github.com/marcelwa/fiction.git
+(venv) $ git submodule update --init --recursive
+(venv) $ cd fiction
+(venv) $ pip install .
+(venv) $ cd ..
+```
+
+After succesfully installing pyfiction, clone this repository and install the dependencies:
+```console
+(venv) $ git clone https://github.com/cda-tum/NanoPlaceR.git
+(venv) $ cd NanoPlaceR
+(venv) $ pip install -r requirements.txt
+```
+
+To register the environment, install the package locally:
+```console
+(venv) $ pip install --e .
+```
+
+You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py``or simply use the tool in the command line.
 
 # Repository Structure
 
