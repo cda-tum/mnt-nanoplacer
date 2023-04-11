@@ -55,11 +55,7 @@ class NanoPlacementEnv(gym.Env):
             self.actions,
             self.DG,
         ) = self.create_action_list(self.benchmark, self.function)
-        self.observation_space = spaces.Dict(
-            {
-                "current_node": spaces.Discrete(max(self.actions)),
-            },
-        )
+        self.observation_space = spaces.Discrete(max(self.actions))
 
         self.action_space = spaces.Discrete(self.layout_width * self.layout_height)
 
@@ -187,9 +183,7 @@ class NanoPlacementEnv(gym.Env):
         self.node_dict_hex = collections.defaultdict(int)
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
-        observation = {
-            "current_node": self.current_node,
-        }
+        observation = self.current_node
 
         self.last_pos = None
         self.current_tries = 0
@@ -294,23 +288,6 @@ class NanoPlacementEnv(gym.Env):
                 if self.current_tries == self.max_tries:
                     self.placement_possible = False
 
-            # elif self.node_to_action[self.actions[self.current_node]] in [
-            #     "INV",
-            #     "FAN-OUT",
-            #     "BUF",
-            # ]:
-            #     layout_node = self.node_dict[preceding_nodes[0]]
-            #     signal = self.layout.make_signal(layout_node)
-
-            #     self.place_node_with_1_input(x=x, y=y, signal=signal)
-            #     placed_node = 1
-
-            # hex
-            # layout_node_hex = self.node_dict_hex[preceding_nodes[0]]
-            # signal_hex = self.hex_layout.make_signal(layout_node_hex)
-
-            # self.place_node_with_1_input_hex(x=x_hex, y=y_hex, signal=signal_hex)
-
             elif self.node_to_action[self.actions[self.current_node]] in [
                 "INV",
                 "FAN-OUT",
@@ -388,9 +365,7 @@ class NanoPlacementEnv(gym.Env):
                 placed_node=placed_node,
             )
 
-        observation = {
-            "current_node": self.current_node,
-        }
+        observation = self.current_node
 
         info = {}
         return observation, reward, done, info

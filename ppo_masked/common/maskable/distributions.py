@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TypeVar
 
 import numpy as np
 import torch as th
@@ -8,6 +8,11 @@ from stable_baselines3.common.distributions import Distribution
 from torch import nn
 from torch.distributions import Categorical
 from torch.distributions.utils import logits_to_probs
+
+SelfMaskableCategoricalDistribution = TypeVar("SelfMaskableCategoricalDistribution", bound="MaskableCategoricalDistribution")
+SelfMaskableMultiCategoricalDistribution = TypeVar(
+    "SelfMaskableMultiCategoricalDistribution", bound="MaskableMultiCategoricalDistribution"
+)
 
 
 class MaskableCategorical(Categorical):
@@ -47,6 +52,7 @@ class MaskableCategorical(Categorical):
             to a large negative value, resulting in near 0 probability. If masks is None, any
             previously applied masking is removed, and the original logits are restored.
         """
+
         if masks is not None:
             device = self.logits.device
             self.masks = th.as_tensor(masks, dtype=th.bool, device=device).reshape(self.logits.shape)
@@ -114,7 +120,9 @@ class MaskableCategoricalDistribution(MaskableDistribution):
         action_logits = nn.Linear(latent_dim, self.action_dim)
         return action_logits
 
-    def proba_distribution(self, action_logits: th.Tensor) -> "MaskableCategoricalDistribution":
+    def proba_distribution(
+        self: SelfMaskableCategoricalDistribution, action_logits: th.Tensor
+    ) -> SelfMaskableCategoricalDistribution:
         # Restructure shape to align with logits
         reshaped_logits = action_logits.view(-1, self.action_dim)
         self.distribution = MaskableCategorical(logits=reshaped_logits)
@@ -177,7 +185,9 @@ class MaskableMultiCategoricalDistribution(MaskableDistribution):
         action_logits = nn.Linear(latent_dim, sum(self.action_dims))
         return action_logits
 
-    def proba_distribution(self, action_logits: th.Tensor) -> "MaskableMultiCategoricalDistribution":
+    def proba_distribution(
+        self: SelfMaskableMultiCategoricalDistribution, action_logits: th.Tensor
+    ) -> SelfMaskableMultiCategoricalDistribution:
         # Restructure shape to align with logits
         reshaped_logits = action_logits.view(-1, sum(self.action_dims))
 
@@ -225,6 +235,7 @@ class MaskableMultiCategoricalDistribution(MaskableDistribution):
         split_masks = [None] * len(self.distributions)
         if masks is not None:
             masks = th.as_tensor(masks)
+
             # Restructure shape to align with logits
             masks = masks.view(-1, sum(self.action_dims))
 

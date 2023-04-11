@@ -6,11 +6,11 @@ import numpy as np
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecMonitor, is_vecenv_wrapped
 
-from ppo_masked.common.maskable.utils import get_action_masks, is_masking_supported
-from ppo_masked.ppo_mask import MaskablePPO
+from sb3_contrib.common.maskable.utils import get_action_masks, is_masking_supported
+from sb3_contrib.ppo_mask import MaskablePPO
 
 
-def evaluate_policy(  # noqa: C901
+def evaluate_policy(
     model: MaskablePPO,
     env: Union[gym.Env, VecEnv],
     n_eval_episodes: int = 10,
@@ -88,28 +88,31 @@ def evaluate_policy(  # noqa: C901
     current_lengths = np.zeros(n_envs, dtype="int")
     observations = env.reset()
     states = None
-
+    episode_starts = np.ones((env.num_envs,), dtype=bool)
     while (episode_counts < episode_count_targets).any():
         if use_masking:
             action_masks = get_action_masks(env)
             actions, state = model.predict(
                 observations,
                 state=states,
+                episode_start=episode_starts,
                 deterministic=deterministic,
                 action_masks=action_masks,
             )
         else:
-            actions, states = model.predict(observations, state=states, deterministic=deterministic)
+            actions, states = model.predict(
+                observations, state=states, episode_start=episode_starts, deterministic=deterministic
+            )
         observations, rewards, dones, infos = env.step(actions)
         current_rewards += rewards
         current_lengths += 1
         for i in range(n_envs):
             if episode_counts[i] < episode_count_targets[i]:
-
                 # unpack values so that the callback can access the local variables
                 reward = rewards[i]
                 done = dones[i]
                 info = infos[i]
+                episode_starts[i] = done
 
                 if callback is not None:
                     callback(locals(), globals())
@@ -133,8 +136,6 @@ def evaluate_policy(  # noqa: C901
                         episode_counts[i] += 1
                     current_rewards[i] = 0
                     current_lengths[i] = 0
-                    if states is not None:
-                        states[i] *= 0
 
         if render:
             env.render()

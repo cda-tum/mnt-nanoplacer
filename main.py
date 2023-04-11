@@ -7,7 +7,7 @@ import placement_envs
 from argparse import ArgumentParser
 
 
-env_id = "placement_envs/NanoPlacementEnv"
+env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
 technology = "QCA"
 layout_width = 200
@@ -74,18 +74,17 @@ if __name__ == "__main__":
         benchmark=args.benchmark,
         function=args.function,
         verbose=args.verbose,
-        disable_env_checker=True,
+        # disable_env_checker=True,
     )
     if args.mode == "INIT":
         model = MaskablePPO(
-            "MultiInputPolicy",
+            "MlpPolicy",
             env,
             batch_size=512,
             verbose=args.verbose,
             gamma=0.995,
             learning_rate=0.001,
             tensorboard_log=f"./tensorboard/{args.function}/",
-            create_eval_env=False,
         )
         reset_num_timesteps = True
     elif args.mode == "TRAIN":

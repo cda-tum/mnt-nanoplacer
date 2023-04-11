@@ -4,7 +4,7 @@ import numpy as np
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import sync_envs_normalization
 
-from ppo_masked.common.maskable.evaluation import evaluate_policy
+from sb3_contrib.common.maskable.evaluation import evaluate_policy
 
 
 class MaskableEvalCallback(EvalCallback):
@@ -36,11 +36,9 @@ class MaskableEvalCallback(EvalCallback):
         self.use_masking = use_masking
 
     def _on_step(self) -> bool:
-
         continue_training = True
 
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
-
             # Sync training and eval env if there is VecNormalize
             if self.model.get_vec_normalize_env() is not None:
                 try:
