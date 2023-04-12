@@ -1,65 +1,109 @@
 from fiction import pyfiction
 import os
 import networkx as nx
-import math
 
 
-def map_to_multidiscrete(action, layout_width):
-    b = int(action / layout_width)
-    a = action % layout_width
-    return [a, b]
+def map_to_multidiscrete(action: int, layout_width: int) -> tuple[int, int]:
+    """Map a discrete action to the corresponding coordinate on a Cartesian grid.
+
+    :param action:         discrete action used by the RL agent
+    :param layout_width    width of the layout
+
+    :return:               coordinate on Cartesian grid
+    """
+    x = action % layout_width
+    y = int(action / layout_width)
+
+    return x, y
 
 
-def map_to_discrete(a, b, layout_width):
+def map_to_discrete(x: int, y: int, layout_width: int) -> int:
+    """Inverse function of 'map_to_multidiscrete'.
+    Takes the coordinate on a Cartesian grid and maps it to a single discrete number.
+
+    :param x:               x-coordinate
+    :param y:               y-ccordinate
+    :param layout_width:    width of the layout
+
+    :return:                discrete representation of the coordinate
+    """
     action = 0
-    action += a
-    action += b * layout_width
+    action += x
+    action += y * layout_width
     return action
 
 
-def create_action_list(benchmark, function):
+def topological_generations(dg: nx.DiGraph) -> int:
+    """Create a topological ordering of a network in a depth-first way and yields each node.
+
+    :param dg:         logic network (graph)
+
+    :return:           current node from the network
+    """
+    indegree_map = {v: d for v, d in dg.in_degree() if d > 0}
+    zero_indegree = [v for v, d in dg.in_degree() if d == 0]
+
+    while zero_indegree:
+        node = zero_indegree[0]
+        if len(zero_indegree) > 1:
+            zero_indegree = zero_indegree[1:]
+        else:
+            zero_indegree = []
+
+        for child in dg.neighbors(node):
+            indegree_map[child] -= 1
+            if indegree_map[child] == 0:
+                zero_indegree.insert(0, child)
+                del indegree_map[child]
+        yield node
+
+
+def topological_sort(dg: nx.DiGraph) -> int:
+    """Create a topological ordering of a network in a depth-first way and yields each node.
+
+    :param dg:         logic network
+
+    :return:           current node
+    """
+
+    for generation in topological_generations(dg):
+        yield generation
+
+
+def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, dict[int, str], list[int], nx.DiGraph]:
+    """Create a topological odering of the network and a mapping of node to gate type.
+
+    :param benchmark:    benchmark set
+    :param function:     function in the benchmark set
+
+    :return:    network:           network of the logic function
+    :return:    node_to_action:    dictionary mapping node to gate type
+    :return:    actions:           topological sort of the network nodes
+    :return:    dg:                digraph representation of the logic network
+    """
     dir_path = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(dir_path, f"../../benchmarks/{benchmark}/{function}.v")
     network = pyfiction.read_logic_network(path)
     params = pyfiction.fanout_substitution_params()
     params.strategy = pyfiction.substitution_strategy.DEPTH
     network = pyfiction.fanout_substitution(network, params)
+    print(type(network))
 
-    DG = nx.DiGraph()
+    dg = nx.DiGraph()
+
+    print(type(dg))
 
     # add nodes
-    DG.add_nodes_from(network.pis())
-    DG.add_nodes_from(network.pos())
-    DG.add_nodes_from(network.gates())
+    dg.add_nodes_from(network.pis())
+    dg.add_nodes_from(network.pos())
+    dg.add_nodes_from(network.gates())
 
     # add edges
     for x in range(max(network.gates()) + 1):
         for pre in network.fanins(x):
-            DG.add_edge(pre, x)
+            dg.add_edge(pre, x)
 
-    def topological_generations(G):
-        indegree_map = {v: d for v, d in G.in_degree() if d > 0}
-        zero_indegree = [v for v, d in G.in_degree() if d == 0]
-
-        while zero_indegree:
-            node = zero_indegree[0]
-            if len(zero_indegree) > 1:
-                zero_indegree = zero_indegree[1:]
-            else:
-                zero_indegree = []
-
-            for child in G.neighbors(node):
-                indegree_map[child] -= 1
-                if indegree_map[child] == 0:
-                    zero_indegree.insert(0, child)
-                    del indegree_map[child]
-            yield node
-
-    def topological_sort(G):
-        for generation in topological_generations(G):
-            yield generation
-
-    actions = list(topological_sort(DG))
+    actions = list(topological_sort(dg))
 
     node_to_action = {}
     for action in actions:
@@ -89,4 +133,4 @@ def create_action_list(benchmark, function):
             node_to_action[action] = "BUF"
         else:
             raise Exception(f"{action}")
-    return network, node_to_action, actions, DG
+    return network, node_to_action, actions, dg
