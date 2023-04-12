@@ -12,16 +12,20 @@ from utils import *
 
 
 class NanoPlacementEnv(gym.Env):
+    """Environment used by the RL agent to place gates on the layout and route them via A*.
+    Subclass of the gym Environment and reimplements all base functions."""
     def __init__(
         self,
-        clocking_scheme="2DDWave",
-        technology="QCA",
-        layout_width=3,
-        layout_height=4,
-        benchmark="trindade16",
-        function="mux21",
-        verbose=1,
+        clocking_scheme: str = "2DDWave",
+        technology: str = "QCA",
+        layout_width: int = 3,
+        layout_height: int = 4,
+        benchmark: str = "trindade16",
+        function: str = "mux21",
+        verbose: int = 1,
     ):
+        """Constructor."""
+
         self.last_pos = None
         self.technology = technology
         self.clocking_scheme = "2DDWave" if self.technology == "SiDB" else clocking_scheme
@@ -71,7 +75,13 @@ class NanoPlacementEnv(gym.Env):
         self.verbose = verbose
         self.layout_mask = 8
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed: int = None, options: dict = None) -> int:
+        """Creates a new empty layout and resets all placement variables.
+
+        :param seed:       Sets random seed (not implemented)
+        :param options:    Additional options (not implemented)
+
+        :return:           Current observation (node to be placed next)"""
         self.layout = pyfiction.cartesian_obstruction_layout(
             pyfiction.cartesian_gate_layout(
                 (self.layout_width - 1, self.layout_height - 1, 1),
@@ -103,7 +113,17 @@ class NanoPlacementEnv(gym.Env):
 
         return observation
 
-    def step(self, action):
+    def step(self, action: int) -> tuple[int, float, bool, dict]:
+        """Taking a step in the environment includes:
+            - placing the gate
+            - try to route it with it(s) predecessor(s)
+            - calculate reward
+            - update observation
+
+        :param action:    Discrete action output by the policy network
+
+        :return           observation, reward, done, info
+        """
         action = map_to_multidiscrete(action, self.layout_width)
         x = action[0]
         y = action[1]
@@ -234,6 +254,7 @@ class NanoPlacementEnv(gym.Env):
         return observation, reward, done, info
 
     def create_cell_layout(self):
+        """Creates cell layout and saves it as .svg for QCA and .dot for SiDB."""
         if self.technology == "QCA":
             try:
                 cell_layout = pyfiction.apply_qca_one_library(self.layout)
@@ -258,13 +279,15 @@ class NanoPlacementEnv(gym.Env):
                 pass
 
     def plot_placement_times(self):
+        """Plot time at each new best placement."""
         nodes = range(1, len(self.placement_times) + 1)
         plt.plot(self.placement_times, nodes)
         plt.ylabel("Nodes")
         plt.xlabel("Training Time [s]")
         plt.show()
 
-    def place_node_with_1_input(self, x, y, signal):
+    def place_node_with_1_input(self, x: int, y: int, signal: int):
+        """Place gate with a single input on a Cartesian grid."""
         if self.node_to_action[self.actions[self.current_node]] == "INV":
             self.layout.create_not(signal, (x, y))
         elif self.node_to_action[self.actions[self.current_node]] == "FAN-OUT":
@@ -274,7 +297,8 @@ class NanoPlacementEnv(gym.Env):
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             self.layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
 
-    def place_node_with_1_input_hex(self, x, y, signal):
+    def place_node_with_1_input_hex(self, x: int, y: int, signal: int):
+        """Place gate with a single input on a hexagonal grid."""
         if self.node_to_action[self.actions[self.current_node]] == "INV":
             self.hex_layout.create_not(signal, (x, y))
         elif self.node_to_action[self.actions[self.current_node]] == "FAN-OUT":
@@ -284,7 +308,8 @@ class NanoPlacementEnv(gym.Env):
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             self.hex_layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
 
-    def place_node_with_2_inputs(self, x, y, signal_1, signal_2):
+    def place_node_with_2_inputs(self, x: int, y: int, signal_1: int, signal_2: int):
+        """Place gate with two inputs on a Cartesian grid."""
         if self.node_to_action[self.actions[self.current_node]] == "AND":
             self.layout.create_and(
                 signal_1,
@@ -307,7 +332,8 @@ class NanoPlacementEnv(gym.Env):
         else:
             raise Exception
 
-    def place_node_with_2_inputs_hex(self, x, y, signal_1, signal_2):
+    def place_node_with_2_inputs_hex(self, x: int, y: int, signal_1: int, signal_2: int):
+        """Place gate with two inputs on a hexagonal grid."""
         if self.node_to_action[self.actions[self.current_node]] == "AND":
             self.hex_layout.create_and(
                 signal_1,
@@ -329,7 +355,11 @@ class NanoPlacementEnv(gym.Env):
         else:
             raise Exception
 
-    def action_masks(self):
+    def action_masks(self) -> list[np.matrix]:
+        """Calculate action mask based on current partial placement.
+        Additionally, checks termination criteria to stop current placement.
+
+        :return:    Action masks"""
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
         possible_positions_nodes = np.ones([self.layout_width, self.layout_height], dtype=int)
 
@@ -501,7 +531,16 @@ class NanoPlacementEnv(gym.Env):
             self.placement_possible = False
         return [mask[i] & mask_occupied[i] for i in range(len(mask))]
 
-    def calculate_reward(self, x, y, placed_node):
+    def calculate_reward(self, x: int, y: int, placed_node: bool) -> tuple[float, bool]:
+        """Calculate reward based on whether a node was placed or not.
+        If a node was placed, reward is scaled by the location on the layout if the 2DDWave clocking scheme is used.
+
+        :param x:              X-coordinate of the placed gate
+        :param y:              Y-coordinate of the placed gate
+        :param placed_node:    Indicates whether a gate was placed or not
+
+        :return:               Reward and termination indicator
+        """
         reward = 10000 if self.current_node == len(self.actions) else placed_node
         if placed_node:
             if self.clocking_scheme == "2DDWave":
@@ -526,4 +565,8 @@ class NanoPlacementEnv(gym.Env):
         return reward, done
 
     def render(self, mode="human"):
+        """Render current placement (not implemented).
+
+        :param mode:    Render mode
+        """
         pass
