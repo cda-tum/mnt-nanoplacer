@@ -10,15 +10,15 @@ from placement_envs.utils import layout_dimensions
 
 env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
-technology = "SiDB"
-minimal_layout_dimension = True  # if False, user specified layout dimensions are chosen
-layout_width = 200
-layout_height = 200
-benchmark = "trindade16"
-function = "mux21"
-time_steps = 10000
-reset_model = False
-verbose = 3  # 0: Only show number of placed gates
+technology = "QCA"
+minimal_layout_dimension = False  # if False, user specified layout dimensions are chosen
+layout_width = 50
+layout_height = 50
+benchmark = "fontes18"
+function = "parity"
+time_steps = 1000000
+reset_model = True
+verbose = 0  # 0: Only show number of placed gates
 #              1: print layout after every new best placement
 #              2: print training metrics
 #              3: print layout and training metrics
@@ -103,10 +103,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.minimal_layout_dimension and args.function in layout_dimensions[args.clocking_scheme][args.benchmark]:
-        args.layout_width, args.layout_height = layout_dimensions[args.clocking_scheme][args.benchmark][args.function]
-    else:
-        raise Exception(f"No predefined layout dimensions for {args.function} available")
+    if args.minimal_layout_dimension:
+        if args.function in layout_dimensions[args.clocking_scheme][args.benchmark]:
+            args.layout_width, args.layout_height = layout_dimensions[args.clocking_scheme][args.benchmark][
+                args.function
+            ]
+        else:
+            raise Exception(f"No predefined layout dimensions for {args.function} available")
 
     env = gym.make(
         env_id,
@@ -160,7 +163,7 @@ if __name__ == "__main__":
     terminated = False
 
     while not terminated:
-        # calculate unfeasible layout positions
+        # calculate infeasible layout positions
         action_masks = get_action_masks(env)
 
         # Predict coordinate for next gate based on the gate to be placed and the action mask

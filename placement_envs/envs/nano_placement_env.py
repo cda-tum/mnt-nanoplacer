@@ -42,8 +42,6 @@ class NanoPlacementEnv(gym.Env):
                 (hex_width, hex_height, 1),
                 "ROW",
             )
-        else:
-            raise Exception(f"Unsupported Technology: {self.technology}")
 
         self.benchmark = benchmark
         self.function = function
