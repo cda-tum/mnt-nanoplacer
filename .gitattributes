@@ -1,4 +1,6 @@
 benchmarks/* linguist-vendored
+benchmarks/trindade16/* linguist-vendored
+benchmarks/fontes18/* linguist-vendored
 benchmarks/TOY/* linguist-vendored
 benchmarks/ISCAS89/* linguist-vendored
 benchmarks/EPFL/* linguist-vendored
