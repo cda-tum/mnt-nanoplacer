@@ -119,7 +119,7 @@ if __name__ == "__main__":
         verbose=1 if args.verbose in (1, 3) else 0,
     )
     if args.reset_model or not os.path.exists(
-        f"ppo_{args.technology}_{args.function}_{args.clocking_scheme}"
+        f"ppo_{args.technology}_{args.function}_{'ROW' if args.technology == 'SiDB' else args.clocking_scheme}"
     ):
         model = MaskablePPO(
             "MlpPolicy",
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         model = MaskablePPO.load(
             os.path.join(
                 "models",
-                f"ppo_{args.technology}_{args.function}_{args.clocking_scheme}",
+                f"ppo_{args.technology}_{args.function}_{'ROW' if args.technology == 'SiDB' else args.clocking_scheme}",
             ),
             env,
         )
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     model.save(
         os.path.join(
             "models",
-            f"ppo_{args.technology}_{args.function}_{args.clocking_scheme}",
+            f"ppo_{args.technology}_{args.function}_{'ROW' if args.technology == 'SiDB' else args.clocking_scheme}",
         )
     )
 
