@@ -6,10 +6,10 @@ import networkx as nx
 def map_to_multidiscrete(action: int, layout_width: int) -> tuple[int, int]:
     """Map a discrete action to the corresponding coordinate on a Cartesian grid.
 
-    :param action:         discrete action used by the RL agent
-    :param layout_width    width of the layout
+    :param action:         Discrete action used by the RL agent
+    :param layout_width    Width of the layout
 
-    :return:               coordinate on Cartesian grid
+    :return:               Coordinate on Cartesian grid
     """
     x = action % layout_width
     y = int(action / layout_width)
@@ -21,11 +21,11 @@ def map_to_discrete(x: int, y: int, layout_width: int) -> int:
     """Inverse function of 'map_to_multidiscrete'.
     Takes the coordinate on a Cartesian grid and maps it to a single discrete number.
 
-    :param x:               x-coordinate
-    :param y:               y-ccordinate
-    :param layout_width:    width of the layout
+    :param x:               X-coordinate
+    :param y:               Y-ccordinate
+    :param layout_width:    Width of the layout
 
-    :return:                discrete representation of the coordinate
+    :return:                Discrete representation of the coordinate
     """
     action = 0
     action += x
@@ -36,9 +36,9 @@ def map_to_discrete(x: int, y: int, layout_width: int) -> int:
 def topological_generations(dg: nx.DiGraph) -> int:
     """Create a topological ordering of a network in a depth-first way and yields each node.
 
-    :param dg:         logic network (graph)
+    :param dg:         Logic network (graph)
 
-    :return:           current node from the network
+    :return:           Current node from the network
     """
     indegree_map = {v: d for v, d in dg.in_degree() if d > 0}
     zero_indegree = [v for v, d in dg.in_degree() if d == 0]
@@ -61,9 +61,9 @@ def topological_generations(dg: nx.DiGraph) -> int:
 def topological_sort(dg: nx.DiGraph) -> int:
     """Create a topological ordering of a network in a depth-first way and yields each node.
 
-    :param dg:         logic network
+    :param dg:         Logic network
 
-    :return:           current node
+    :return:           Current node
     """
 
     for generation in topological_generations(dg):
@@ -73,13 +73,13 @@ def topological_sort(dg: nx.DiGraph) -> int:
 def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, dict[int, str], list[int], nx.DiGraph]:
     """Create a topological odering of the network and a mapping of node to gate type.
 
-    :param benchmark:    benchmark set
-    :param function:     function in the benchmark set
+    :param benchmark:    Benchmark set
+    :param function:     Function in the benchmark set
 
-    :return:    network:           network of the logic function
-    :return:    node_to_action:    dictionary mapping node to gate type
-    :return:    actions:           topological sort of the network nodes
-    :return:    dg:                digraph representation of the logic network
+    :return:    network:           Network of the logic function
+    :return:    node_to_action:    Dictionary mapping node to gate type
+    :return:    actions:           Topological sort of the network nodes
+    :return:    dg:                Digraph representation of the logic network
     """
     dir_path = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(dir_path, f"../../benchmarks/{benchmark}/{function}.v")

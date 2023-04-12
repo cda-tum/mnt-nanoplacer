@@ -6,10 +6,10 @@ from fiction import pyfiction
 def to_hex(old_coord: Union[tuple, pyfiction.coordinate], height: int) -> tuple[int, int, int]:
     """Transform Cartesian coordinate to the corresponding coordinate on the hexagonal grid.
 
-    :param old_coord:   coordinate on the Cartesian grid
-    :param height:      layout height
+    :param old_coord:   Coordinate on the Cartesian grid
+    :param height:      Layout height
 
-    :return:            coordinate on the hexagonal grid"""
+    :return:            Coordinate on the hexagonal grid"""
     if isinstance(old_coord, tuple):
         old_x, old_y, old_z = old_coord
     else:
@@ -31,11 +31,11 @@ def cartesian_to_hexagonal(
     """Transform a Cartesian to a hexagonal layout by remapping each gate/wire.
 
     :param layout:          Cartesian layout
-    :param layout_width     width of the Cartesian layout
-    :param layout_height    height of the Cartesian layout
-    :param hex_layout       hexagonal layout to map the Cartesian layout to
+    :param layout_width     Width of the Cartesian layout
+    :param layout_height    Height of the Cartesian layout
+    :param hex_layout       Hexagonal layout to map the Cartesian layout to
 
-    :return:                hexagonal layout
+    :return:                Hexagonal layout
     """
 
     for k in range(layout_width + layout_height - 1):
