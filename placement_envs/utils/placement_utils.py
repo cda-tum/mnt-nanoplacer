@@ -87,11 +87,8 @@ def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, di
     params = pyfiction.fanout_substitution_params()
     params.strategy = pyfiction.substitution_strategy.DEPTH
     network = pyfiction.fanout_substitution(network, params)
-    print(type(network))
 
     dg = nx.DiGraph()
-
-    print(type(dg))
 
     # add nodes
     dg.add_nodes_from(network.pis())

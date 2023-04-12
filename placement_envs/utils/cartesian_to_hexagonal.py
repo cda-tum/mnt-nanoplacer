@@ -4,6 +4,12 @@ from fiction import pyfiction
 
 
 def to_hex(old_coord: Union[tuple, pyfiction.coordinate], height: int) -> tuple[int, int, int]:
+    """Transform Cartesian coordinate to the corresponding coordinate on the hexagonal grid.
+
+    :param old_coord:   coordinate on the Cartesian grid
+    :param height:      layout height
+
+    :return:            coordinate on the hexagonal grid"""
     if isinstance(old_coord, tuple):
         old_x, old_y, old_z = old_coord
     else:
@@ -16,11 +22,22 @@ def to_hex(old_coord: Union[tuple, pyfiction.coordinate], height: int) -> tuple[
     return x, y, z
 
 
-def cartesian_to_hexagonal(layout, layout_width, layout_height, hex_layout):
-    print(layout)
-    print(layout_width)
-    print(layout_height)
-    print(hex_layout)
+def cartesian_to_hexagonal(
+    layout: pyfiction.cartesian_gate_layout,
+    layout_width: int,
+    layout_height: int,
+    hex_layout: pyfiction.hexagonal_gate_layout,
+) -> pyfiction.hexagonal_gate_layout:
+    """Transform a Cartesian to a hexagonal layout by remapping each gate/wire.
+
+    :param layout:          Cartesian layout
+    :param layout_width     width of the Cartesian layout
+    :param layout_height    height of the Cartesian layout
+    :param hex_layout       hexagonal layout to map the Cartesian layout to
+
+    :return:                hexagonal layout
+    """
+
     for k in range(layout_width + layout_height - 1):
         for x in range(k + 1):
             y = k - x
@@ -31,8 +48,6 @@ def cartesian_to_hexagonal(layout, layout_width, layout_height, hex_layout):
                     if layout.is_pi_tile(node):
                         hex_layout.create_pi(layout.get_input_name(layout.get_node(node)), hex)
                     elif layout.is_po_tile(node):
-                        print("here")
-                        print(hex)
                         hex_layout.create_po(
                             hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
                             layout.get_output_name(layout.get_node(node)),
