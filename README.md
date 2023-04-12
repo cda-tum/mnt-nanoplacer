@@ -35,11 +35,14 @@ $ source venv/bin/activate
 ```
 
 NanoPlaceR heavily depends on fiction, whose python binding currently has to be installed from source (will be available as a python package in the future).
+Fiction utilizes the [SMT solver Z3](https://github.com/Z3Prover/z3).
+Follow the [installation instructions](https://github.com/Z3Prover/z3/blob/master/README-CMake.md) and call
+``sudo make install`` to install headers, scripts, and the binary.
+
 To install fiction and build it, run the following commands:
 ```console
 (venv) $ git clone -b pyml --single-branch --recursive https://github.com/marcelwa/fiction.git
 (venv) $ cd fiction
-(venv) $ git submodule update --init --recursive
 (venv) $ pip install .
 (venv) $ cd ..
 ```
@@ -56,7 +59,7 @@ To register the environment, install the package locally:
 (venv) $ pip install -e .
 ```
 
-You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py``or simply use the tool in the command line.
+You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py`` or simply use the tool in the command line.
 
 ```
 (venv) $ python main.py -h
