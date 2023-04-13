@@ -1,14 +1,14 @@
-import gym
-import matplotlib.pyplot as plt
-from gym import spaces
-
-import os
 import collections
-import numpy as np
-from fiction import pyfiction
+import os
 from time import time
 
+import gym
+import matplotlib.pyplot as plt
+import numpy as np
+from gym import spaces
 from utils import *
+
+from fiction import pyfiction
 
 
 class NanoPlacementEnv(gym.Env):

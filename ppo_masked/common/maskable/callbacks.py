@@ -1,10 +1,9 @@
 import os
 
 import numpy as np
+from sb3_contrib.common.maskable.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.vec_env import sync_envs_normalization
-
-from sb3_contrib.common.maskable.evaluation import evaluate_policy
 
 
 class MaskableEvalCallback(EvalCallback):

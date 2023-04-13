@@ -6,33 +6,26 @@ from typing import Any, Dict, Optional, Tuple, Type, TypeVar, Union
 import numpy as np
 import torch as th
 from gym import spaces
+from ppo_masked.common.maskable.buffers import (MaskableDictRolloutBuffer,
+                                                MaskableRolloutBuffer)
+from ppo_masked.common.maskable.policies import MaskableActorCriticPolicy
+from ppo_masked.common.maskable.utils import (get_action_masks,
+                                              is_masking_supported)
+from ppo_masked.ppo_mask.policies import CnnPolicy, MlpPolicy, MultiInputPolicy
 from stable_baselines3.common import utils
 from stable_baselines3.common.buffers import RolloutBuffer
-from stable_baselines3.common.callbacks import (
-    BaseCallback,
-    CallbackList,
-    ConvertCallback,
-    ProgressBarCallback,
-)
+from stable_baselines3.common.callbacks import (BaseCallback, CallbackList,
+                                                ConvertCallback,
+                                                ProgressBarCallback)
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import (
-    explained_variance,
-    get_schedule_fn,
-    obs_as_tensor,
-    safe_mean,
-)
+from stable_baselines3.common.type_aliases import (GymEnv, MaybeCallback,
+                                                   Schedule)
+from stable_baselines3.common.utils import (explained_variance,
+                                            get_schedule_fn, obs_as_tensor,
+                                            safe_mean)
 from stable_baselines3.common.vec_env import VecEnv
 from torch.nn import functional as F
-
-from ppo_masked.common.maskable.buffers import (
-    MaskableDictRolloutBuffer,
-    MaskableRolloutBuffer,
-)
-from ppo_masked.common.maskable.policies import MaskableActorCriticPolicy
-from ppo_masked.common.maskable.utils import get_action_masks, is_masking_supported
-from ppo_masked.ppo_mask.policies import CnnPolicy, MlpPolicy, MultiInputPolicy
 
 SelfMaskablePPO = TypeVar("SelfMaskablePPO", bound="MaskablePPO")
 

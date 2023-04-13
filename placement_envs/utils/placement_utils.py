@@ -1,6 +1,8 @@
-from fiction import pyfiction
 import os
+
 import networkx as nx
+
+from fiction import pyfiction
 
 
 def map_to_multidiscrete(action: int, layout_width: int) -> tuple[int, int]:

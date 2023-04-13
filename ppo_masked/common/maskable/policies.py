@@ -5,21 +5,15 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy as np
 import torch as th
 from gym import spaces
+from ppo_masked.common.maskable.distributions import (
+    MaskableDistribution, make_masked_proba_distribution)
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.torch_layers import (
-    BaseFeaturesExtractor,
-    CombinedExtractor,
-    FlattenExtractor,
-    MlpExtractor,
-    NatureCNN,
-)
+from stable_baselines3.common.torch_layers import (BaseFeaturesExtractor,
+                                                   CombinedExtractor,
+                                                   FlattenExtractor,
+                                                   MlpExtractor, NatureCNN)
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
-
-from ppo_masked.common.maskable.distributions import (
-    MaskableDistribution,
-    make_masked_proba_distribution,
-)
 
 
 class MaskableActorCriticPolicy(BasePolicy):

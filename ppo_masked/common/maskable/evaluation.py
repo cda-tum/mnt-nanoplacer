@@ -3,16 +3,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import (
-    DummyVecEnv,
-    VecEnv,
-    VecMonitor,
-    is_vecenv_wrapped,
-)
-
-from sb3_contrib.common.maskable.utils import get_action_masks, is_masking_supported
+from sb3_contrib.common.maskable.utils import (get_action_masks,
+                                               is_masking_supported)
 from sb3_contrib.ppo_mask import MaskablePPO
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import (DummyVecEnv, VecEnv, VecMonitor,
+                                              is_vecenv_wrapped)
 
 
 def evaluate_policy(

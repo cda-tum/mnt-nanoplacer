@@ -1,5 +1,6 @@
 import math
 from typing import Union
+
 from fiction import pyfiction
 
 

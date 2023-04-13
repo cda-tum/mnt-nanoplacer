@@ -1,12 +1,11 @@
-import gym
-
 import os
+from argparse import ArgumentParser
+
+import gym
+import placement_envs
+from placement_envs.utils import layout_dimensions
 from ppo_masked import MaskablePPO
 from ppo_masked.common.maskable.utils import get_action_masks
-import placement_envs
-from argparse import ArgumentParser
-from placement_envs.utils import layout_dimensions
-
 
 env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
