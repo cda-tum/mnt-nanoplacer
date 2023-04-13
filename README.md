@@ -100,15 +100,18 @@ Optional arguments:
 ├── tensorboard/                      # tensorboard log directory
 ```
 
-# Monitoring Trainig
+# Monitoring Training
+
 Training can be monitored using [Tensorboard](https://www.tensorflow.org/tensorboard).
 
 Install it via
+
 ```console
 (venv) $ pip install tensorboard
 ```
 
-and run the following command from within the NanoPlaveR directory:
+and run the following command from within the NanoPlaceR directory:
+
 ```console
 (venv) $ cd NanoPlaceR
 (venv) $ tensorboard --logdir="tensorboard/{Insert function name here}"
