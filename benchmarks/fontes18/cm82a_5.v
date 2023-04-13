@@ -29,5 +29,3 @@ module top (
   assign new_n27_ = new_n21_ & ~new_n26_;
   assign po2 = ~new_n25_ & ~new_n27_;
 endmodule
-
-

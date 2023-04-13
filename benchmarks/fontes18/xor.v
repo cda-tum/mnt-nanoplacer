@@ -10,5 +10,3 @@ module top (
   assign new_n5_ = x & ~y;
   assign XOR = new_n4_ | new_n5_;
 endmodule
-
-

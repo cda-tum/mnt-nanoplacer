@@ -1,8 +1,9 @@
 import os
 from argparse import ArgumentParser
+from pathlib import Path
 
 import gym
-import placement_envs
+
 from placement_envs.utils import layout_dimensions
 from ppo_masked import MaskablePPO
 from ppo_masked.common.maskable.utils import get_action_masks
@@ -120,7 +121,7 @@ if __name__ == "__main__":
         function=args.function,
         verbose=1 if args.verbose in (1, 3) else 0,
     )
-    if args.reset_model or not os.path.exists(
+    if args.reset_model or not Path.exists(
         f"ppo_{args.technology}_{args.function}_{'ROW' if args.technology == 'SiDB' else args.clocking_scheme}"
     ):
         model = MaskablePPO(

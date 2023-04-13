@@ -33,4 +33,4 @@ assign w18 = a1 & b1;
 assign w19 = n2 & cin;
 assign cout = w18 | w19;
 
-endmodule 
+endmodule

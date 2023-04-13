@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \opcode0 , \opcode1 , \opcode2 , \opcode3 , \opcode4 ,
     \op_ext0 , \op_ext1 ,
     \sel_reg_dst0 , \sel_reg_dst1 , \sel_alu_opB0 , \sel_alu_opB1 ,
@@ -200,5 +200,3 @@ module top (
   assign n207 = ~\opcode2  & ~n206;
   assign sel_wb = ~\opcode2  & ~n207;
 endmodule
-
-

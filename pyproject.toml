@@ -7,12 +7,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "NanoPlaceR"
-description = "MQT ProblemSolver - A MQT tool for Solving Problems Using Quantum Computing"
+description = "NanoPlaceR - An open-source framework for placement and routing of Field-coupled Nanotechnologies based on reinforcement learning."
 readme = "README.md"
 authors = [
     { name = "Simon Hofmann", email = "simon.t.hofmann@tum.de" },
 ]
-keywords = ["FCN",  "physcial design"]
+keywords = ["FCN",  "physical design"]
 license = { file = "LICENSE" }
 requires-python = "<3.10"
 dynamic = ["version"]

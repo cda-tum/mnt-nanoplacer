@@ -34,5 +34,3 @@ module top (
   assign new_n30_ = ~new_n28_ & ~new_n29_;
   assign M6 = new_n27_ | ~new_n30_;
 endmodule
-
-

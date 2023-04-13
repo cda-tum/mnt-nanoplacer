@@ -1,7 +1,6 @@
 import os
 
 import networkx as nx
-
 from fiction import pyfiction
 
 
@@ -47,10 +46,7 @@ def topological_generations(dg: nx.DiGraph) -> int:
 
     while zero_indegree:
         node = zero_indegree[0]
-        if len(zero_indegree) > 1:
-            zero_indegree = zero_indegree[1:]
-        else:
-            zero_indegree = []
+        zero_indegree = zero_indegree[1:] if len(zero_indegree) > 1 else []
 
         for child in dg.neighbors(node):
             indegree_map[child] -= 1
@@ -68,8 +64,7 @@ def topological_sort(dg: nx.DiGraph) -> int:
     :return:           Current node
     """
 
-    for generation in topological_generations(dg):
-        yield generation
+    yield from topological_generations(dg)
 
 
 def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, dict[int, str], list[int], nx.DiGraph]:

@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \count0 , \count1 , \count2 , \count3 , \count4 , \count5 ,
     \count6 , \count7 ,
     \selectp10 , \selectp11 , \selectp12 , \selectp13 ,
@@ -441,5 +441,3 @@ module top (
   assign \selectp2126  = n304 & n552;
   assign \selectp2127  = n306 & n552;
 endmodule
-
-

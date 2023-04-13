@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \1 , 2, 3, 6, 7,
     22, 23  );
   input  \1 , 2, 3, 6, 7;
@@ -11,5 +11,3 @@ module top (
   assign n12 = 7 & ~n9;
   assign 23 = n10 | n12;
 endmodule
-
-

@@ -15,5 +15,3 @@ module top (pi0, pi1, pi2, pi3, pi4, po0);
   assign n17 = ~n9 & ~n15;
   assign po0 = n16 | n17;
 endmodule
-
-

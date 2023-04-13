@@ -1,6 +1,6 @@
 // Benchmark "top" written by ABC on Fri Sep  4 10:02:12 2020
 
-module top ( 
+module top (
     x, y, z,
     H, I  );
   input  x, y, z;
@@ -14,5 +14,3 @@ module top (
   assign H = ~new_n9_ & ~new_n10_;
   assign I = new_n7_ | new_n10_;
 endmodule
-
-

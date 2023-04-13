@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \priority0 , \priority1 , \priority2 , \priority3 ,
     \priority4 , \priority5 , \priority6 , \priority7 ,
     \priority8 , \priority9 , \priority10 , \priority11 ,
@@ -13185,5 +13185,3 @@ module top (
   assign n12223 = n12218 & n12219;
   assign anyGrant = ~n12222 | ~n12223;
 endmodule
-
-

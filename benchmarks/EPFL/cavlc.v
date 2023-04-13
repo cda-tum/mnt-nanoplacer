@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \totalcoeffs0 , \totalcoeffs1 , \totalcoeffs2 , \totalcoeffs3 ,
     \totalcoeffs4 , \ctable0 , \ctable1 , \ctable2 ,
     \trailingones0 , \trailingones1 ,
@@ -761,5 +761,3 @@ module top (
   assign n713 = ~\ctable2  & ~n712;
   assign \ctoken_len4  = n342 & n713;
 endmodule
-
-

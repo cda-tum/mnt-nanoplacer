@@ -5,15 +5,15 @@ from time import time
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
+from fiction import pyfiction
 from gym import spaces
 from utils import *
-
-from fiction import pyfiction
 
 
 class NanoPlacementEnv(gym.Env):
     """Environment used by the RL agent to place gates on the layout and route them via A*.
     Subclass of the gym Environment and reimplements all base functions."""
+
     def __init__(
         self,
         clocking_scheme: str = "2DDWave",
@@ -259,7 +259,7 @@ class NanoPlacementEnv(gym.Env):
             try:
                 cell_layout = pyfiction.apply_qca_one_library(self.layout)
                 params = pyfiction.write_qca_layout_svg_params()
-                params.simple = True if len(self.actions) > 200 else False
+                params.simple = len(self.actions) > 200
                 pyfiction.write_qca_layout_svg(
                     cell_layout,
                     os.path.join("images", f"{self.function}_{self.clocking_scheme}_qca.svg"),
@@ -369,12 +369,8 @@ class NanoPlacementEnv(gym.Env):
         if (
             self.node_to_action[self.actions[self.current_node]] not in ["INPUT", "OUTPUT"]
             and len(preceding_nodes) != 1
-        ):
-            if (
-                not self.node_to_action[self.actions[self.current_node]] == "OUTPUT"
-                and self.clocking_scheme == "2DDWave"
-            ):
-                possible_positions_nodes[: self.layout_mask, : self.layout_mask] = 0
+        ) and (self.node_to_action[self.actions[self.current_node]] != "OUTPUT" and self.clocking_scheme == "2DDWave"):
+            possible_positions_nodes[: self.layout_mask, : self.layout_mask] = 0
 
         if self.node_to_action[self.actions[self.current_node]] == "INPUT":
             if self.clocking_scheme == "2DDWave":
@@ -463,9 +459,8 @@ class NanoPlacementEnv(gym.Env):
                             self.layout.is_empty_tile((zone.x, zone.y, 1))
                             and zone.x != self.layout_width
                             and zone.y != self.layout_height
-                        ):
-                            if self.layout.get_node((zone.x, zone.y, 0)) not in self.node_dict.values():
-                                possible = True
+                        ) and self.layout.get_node((zone.x, zone.y, 0)) not in self.node_dict.values():
+                            possible = True
                     params = pyfiction.a_star_params()
                     params.crossings = True
 
@@ -498,29 +493,31 @@ class NanoPlacementEnv(gym.Env):
                                 overall = True
                             if overall:
                                 possible = True
-                    elif self.clocking_scheme == "2DDWave":
-                        if possible:
-                            if (
-                                len(
-                                    pyfiction.a_star(
-                                        self.layout,
-                                        tile,
-                                        (
-                                            min(
-                                                self.layout_width,
-                                                self.layout_mask,
-                                            ),
-                                            min(
-                                                self.layout_height,
-                                                self.layout_mask,
-                                            ),
+                    elif (
+                        self.clocking_scheme == "2DDWave"
+                        and possible
+                        and (
+                            len(
+                                pyfiction.a_star(
+                                    self.layout,
+                                    tile,
+                                    (
+                                        min(
+                                            self.layout_width,
+                                            self.layout_mask,
                                         ),
-                                        params,
-                                    )
+                                        min(
+                                            self.layout_height,
+                                            self.layout_mask,
+                                        ),
+                                    ),
+                                    params,
                                 )
-                                == 0
-                            ):
-                                possible = False
+                            )
+                            == 0
+                        )
+                    ):
+                        possible = False
                     self.layout.resize((self.layout_width - 1, self.layout_height - 1, 1))
 
                     if not possible:
@@ -542,11 +539,10 @@ class NanoPlacementEnv(gym.Env):
         :return:               Reward and termination indicator
         """
         reward = 10000 if self.current_node == len(self.actions) else placed_node
-        if placed_node:
-            if self.clocking_scheme == "2DDWave":
-                reward *= 1 - ((x + y) / (self.layout_mask * self.layout_mask))
+        if placed_node and self.clocking_scheme == "2DDWave":
+            reward *= 1 - ((x + y) / (self.layout_mask * self.layout_mask))
 
-        done = True if self.current_node == len(self.actions) or not self.placement_possible else False
+        done = bool(self.current_node == len(self.actions) or not self.placement_possible)
         if self.current_node > self.max_placed_nodes:
             print(f"New best placement: {self.current_node}/{len(self.actions)} ({time() - self.start:.2f}s)")
             if self.verbose == 1:
@@ -569,4 +565,3 @@ class NanoPlacementEnv(gym.Env):
 
         :param mode:    Render mode
         """
-        pass

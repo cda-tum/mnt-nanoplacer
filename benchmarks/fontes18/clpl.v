@@ -18,5 +18,3 @@ module top  (
   assign new_n25_ = pi09 & po4;
   assign po3 = pi10 | new_n25_;
 endmodule
-
-

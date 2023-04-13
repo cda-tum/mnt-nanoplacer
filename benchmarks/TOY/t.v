@@ -9,5 +9,3 @@ module top(pi0, pi1, pi2, pi3, pi4, po0, po1);
   assign n13 = ~pi1 & ~pi4;
   assign po1 = ~n9 & ~n13;
 endmodule
-
-

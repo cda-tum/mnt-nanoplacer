@@ -13,5 +13,3 @@ module top  (
   assign new_n12_ = pi4 & ~new_n8_;
   assign po1 = new_n9_ | new_n12_;
 endmodule
-
-

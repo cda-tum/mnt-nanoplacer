@@ -1,6 +1,6 @@
 // Benchmark "top" written by ABC on Fri Sep  4 10:02:12 2020
 
-module top ( 
+module top (
     x, y, z, p, q,
     M6  );
   input  x, y, z, p, q;
@@ -41,5 +41,3 @@ module top (
   assign new_n35_ = ~new_n33_ & ~new_n34_;
   assign M6 = new_n32_ | ~new_n35_;
 endmodule
-
-

@@ -3,12 +3,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gym
 import numpy as np
-from sb3_contrib.common.maskable.utils import (get_action_masks,
-                                               is_masking_supported)
+from sb3_contrib.common.maskable.utils import get_action_masks, is_masking_supported
 from sb3_contrib.ppo_mask import MaskablePPO
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import (DummyVecEnv, VecEnv, VecMonitor,
-                                              is_vecenv_wrapped)
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecMonitor, is_vecenv_wrapped
 
 
 def evaluate_policy(
@@ -126,7 +124,7 @@ def evaluate_policy(
                         # Atari wrapper can send a "done" signal when
                         # the agent loses a life, but it does not correspond
                         # to the true end of episode
-                        if "episode" in info.keys():
+                        if "episode" in info:
                             # Do not trust "done" with episode endings.
                             # Monitor wrapper includes "episode" key in info if environment
                             # has been wrapped with it. Use those rewards instead.

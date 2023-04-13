@@ -11,5 +11,3 @@ module top (pi0, pi1, pi2, po0, po1, po2, po3);
   assign po3 = ~pi2;
   assign po0 = pi2;
 endmodule
-
-

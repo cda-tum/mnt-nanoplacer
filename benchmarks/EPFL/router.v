@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \dest_x0 , \dest_x1 , \dest_x2 , \dest_x3 , \dest_x4 ,
     \dest_x5 , \dest_x6 , \dest_x7 , \dest_x8 , \dest_x9 ,
     \dest_x10 , \dest_x11 , \dest_x12 , \dest_x13 , \dest_x14 ,
@@ -305,5 +305,3 @@ module top (
   assign n347 = ~n339 & ~n346;
   assign \outport2  = ~\outport0  & ~n347;
 endmodule
-
-

@@ -22,5 +22,3 @@ module top (
   assign new_n17_ = ~new_n15_ & ~new_n16_;
   assign M3 = new_n14_ | ~new_n17_;
 endmodule
-
-

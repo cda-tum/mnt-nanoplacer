@@ -5,15 +5,18 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy as np
 import torch as th
 from gym import spaces
-from ppo_masked.common.maskable.distributions import (
-    MaskableDistribution, make_masked_proba_distribution)
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.torch_layers import (BaseFeaturesExtractor,
-                                                   CombinedExtractor,
-                                                   FlattenExtractor,
-                                                   MlpExtractor, NatureCNN)
+from stable_baselines3.common.torch_layers import (
+    BaseFeaturesExtractor,
+    CombinedExtractor,
+    FlattenExtractor,
+    MlpExtractor,
+    NatureCNN,
+)
 from stable_baselines3.common.type_aliases import Schedule
 from torch import nn
+
+from ppo_masked.common.maskable.distributions import MaskableDistribution, make_masked_proba_distribution
 
 
 class MaskableActorCriticPolicy(BasePolicy):
@@ -83,10 +86,7 @@ class MaskableActorCriticPolicy(BasePolicy):
 
         # Default network architecture, from stable-baselines
         if net_arch is None:
-            if features_extractor_class == NatureCNN:
-                net_arch = []
-            else:
-                net_arch = dict(pi=[64, 64], vf=[64, 64])
+            net_arch = [] if features_extractor_class == NatureCNN else {"pi": [64, 64], "vf": [64, 64]}
 
         self.net_arch = net_arch
         self.activation_fn = activation_fn
@@ -155,16 +155,16 @@ class MaskableActorCriticPolicy(BasePolicy):
         data = super()._get_constructor_parameters()
 
         data.update(
-            dict(
-                net_arch=self.net_arch,
-                activation_fn=self.activation_fn,
-                lr_schedule=self._dummy_schedule,  # dummy lr schedule, not needed for loading policy alone
-                ortho_init=self.ortho_init,
-                optimizer_class=self.optimizer_class,
-                optimizer_kwargs=self.optimizer_kwargs,
-                features_extractor_class=self.features_extractor_class,
-                features_extractor_kwargs=self.features_extractor_kwargs,
-            )
+            {
+                "net_arch": self.net_arch,
+                "activation_fn": self.activation_fn,
+                "lr_schedule": self._dummy_schedule,  # dummy lr schedule, not needed for loading policy alone
+                "ortho_init": self.ortho_init,
+                "optimizer_class": self.optimizer_class,
+                "optimizer_kwargs": self.optimizer_kwargs,
+                "features_extractor_class": self.features_extractor_class,
+                "features_extractor_kwargs": self.features_extractor_kwargs,
+            }
         )
         return data
 

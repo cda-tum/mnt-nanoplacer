@@ -74,7 +74,7 @@ class MaskableEvalCallback(EvalCallback):
                 # Save success log if present
                 if len(self._is_success_buffer) > 0:
                     self.evaluations_successes.append(self._is_success_buffer)
-                    kwargs = dict(successes=self.evaluations_successes)
+                    kwargs = {"successes": self.evaluations_successes}
 
                 np.savez(
                     self.log_path,

@@ -1,4 +1,4 @@
-module top ( 
+module top (
     \B0 , \B1 , \B2 , \B3 , \B4 , \B5 , \B6 , \B7 , \B8 ,
     \B9 , \B10 ,
     \M0 , \M1 , \M2 , \M3 , \E0 , \E1 , \E2   );
@@ -287,5 +287,3 @@ module top (
   assign n277 = ~\B10  & n276;
   assign \E2  = ~n53 | ~n277;
 endmodule
-
-

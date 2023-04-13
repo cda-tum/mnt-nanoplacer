@@ -13,5 +13,3 @@ module top(pi00, pi01, pi02, pi03, pi04, pi05, pi06, pi07, pi08, pi09, pi10, po0
   assign n26 = po4 & pi09;
   assign po3 = n26 | pi10;
 endmodule
-
-

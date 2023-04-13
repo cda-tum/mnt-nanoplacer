@@ -60,5 +60,3 @@ module top (
   assign new_n61_ = ~new_n38_ & new_n59_;
   assign po0 = new_n60_ | new_n61_;
 endmodule
-
-

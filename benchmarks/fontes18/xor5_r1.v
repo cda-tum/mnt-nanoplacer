@@ -20,5 +20,3 @@ module top  (
   assign new_n17_ = ~new_n9_ & ~new_n15_;
   assign po0 = new_n16_ | new_n17_;
 endmodule
-
-

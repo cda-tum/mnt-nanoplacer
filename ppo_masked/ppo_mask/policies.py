@@ -1,6 +1,8 @@
 from ppo_masked.common.maskable.policies import (
-    MaskableActorCriticCnnPolicy, MaskableActorCriticPolicy,
-    MaskableMultiInputActorCriticPolicy)
+    MaskableActorCriticCnnPolicy,
+    MaskableActorCriticPolicy,
+    MaskableMultiInputActorCriticPolicy,
+)
 
 MlpPolicy = MaskableActorCriticPolicy
 CnnPolicy = MaskableActorCriticCnnPolicy

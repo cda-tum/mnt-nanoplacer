@@ -5,14 +5,13 @@
 NanoPlaceR is a tool for the physical design of FCN circuitry based on Reinforcement Learning.
 It can generate layouts for logic networks up to ~200 gates, while requiring ~50% less area than the state-of-the-art heuristic approach.
 
-Inspired by recent developments in the field of machine learning-aided design automation, this tool combines reinforcement learning with efficient path routing algorithms based on established algorithms such as A* search. 
-Masked Proximal Policy Optimization (PPO) is used to learn the placement of logic elements, which is further accelerated by incorporating an action mask computed based on the netlist structure and the last partial placement, ensuring valid and compact solutions. 
-To minimize the occurrence of unpromising partial placements, several checks constantly ensure the early termination of sub-par solutions. 
+Inspired by recent developments in the field of machine learning-aided design automation, this tool combines reinforcement learning with efficient path routing algorithms based on established algorithms such as A\* search.
+Masked Proximal Policy Optimization (PPO) is used to learn the placement of logic elements, which is further accelerated by incorporating an action mask computed based on the netlist structure and the last partial placement, ensuring valid and compact solutions.
+To minimize the occurrence of unpromising partial placements, several checks constantly ensure the early termination of sub-par solutions.
 Furthermore, the routing of placed gates is incorporated directly into the placement step using established routing strategies.
 The following figure outlines the methodology:
 
 ![](images/lbr.png)
-
 
 # Usage of NanoPlaceR
 
@@ -37,9 +36,10 @@ $ source venv/bin/activate
 NanoPlaceR heavily depends on fiction, whose python binding currently has to be installed from source (will be available as a python package in the future).
 Fiction utilizes the [SMT solver Z3](https://github.com/Z3Prover/z3).
 Follow the [installation instructions](https://github.com/Z3Prover/z3/blob/master/README-CMake.md) and call
-``sudo make install`` to install headers, scripts, and the binary.
+`sudo make install` to install headers, scripts, and the binary.
 
 To install fiction and build it, run the following commands:
+
 ```console
 (venv) $ git clone -b pyml --single-branch --recursive https://github.com/marcelwa/fiction.git
 (venv) $ cd fiction
@@ -47,7 +47,8 @@ To install fiction and build it, run the following commands:
 (venv) $ cd ..
 ```
 
-After succesfully installing pyfiction, clone this repository and install the dependencies:
+After successfully installing pyfiction, clone this repository and install the dependencies:
+
 ```console
 (venv) $ git clone https://github.com/cda-tum/NanoPlaceR.git
 (venv) $ cd NanoPlaceR
@@ -55,11 +56,12 @@ After succesfully installing pyfiction, clone this repository and install the de
 ```
 
 To register the environment, install the package locally:
+
 ```console
 (venv) $ pip install -e .
 ```
 
-You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in ``main.py`` or simply use the tool in the command line.
+You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in `main.py` or simply use the tool in the command line.
 
 ```
 (venv) $ python main.py -h
