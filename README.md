@@ -1,6 +1,5 @@
 [![License: MIT][mit-badge]](https://opensource.org/licenses/MIT)
 [![Code style: black][black-badge]][black-link]
-[![Scikit-HEP][sk-badge]](https://scikit-hep.org/)
 
 # NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
 
@@ -117,4 +116,3 @@ In case you are using NanoPlaceR in your work, we would be thankful if you refer
 [mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square
 [black-badge]: https://img.shields.io/badge/code%20style-black-000000.svg
 [black-link]: https://github.com/psf/black
-[sk-badge]: https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg
