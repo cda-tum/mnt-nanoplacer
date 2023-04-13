@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
-from utils import *
+from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, to_hex
 
 
 class NanoPlacementEnv(gym.Env):
@@ -75,7 +75,7 @@ class NanoPlacementEnv(gym.Env):
         self.verbose = verbose
         self.layout_mask = 8
 
-    def reset(self, seed: int = None, options: dict = None) -> int:
+    def reset(self, seed: int = None, options: dict = None) -> int:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
 
         :param seed:       Sets random seed (not implemented)
@@ -222,7 +222,8 @@ class NanoPlacementEnv(gym.Env):
                     pyfiction.route_path(self.layout, path)
                     placed_node = 1
                     self.current_tries = 0
-                    for fanin in self.layout.fanins((x, y)):
+                    for fanins in self.layout.fanins((x, y)):
+                        fanin = fanins
                         while fanin != layout_tile:
                             self.layout.obstruct_coordinate(fanin)
                             self.occupied_tiles[fanin.x][fanin.y] = 1
@@ -231,7 +232,8 @@ class NanoPlacementEnv(gym.Env):
                 if self.current_tries == self.max_tries:
                     self.placement_possible = False
             else:
-                raise Exception(f"Not a valid node: {self.node_to_action[self.actions[self.current_node]]}")
+                error_message = f"Not a valid node: {self.node_to_action[self.actions[self.current_node]]}"
+                raise Exception(error_message)
 
             self.node_dict[self.actions[self.current_node]] = self.layout.get_node((x, y))
 
@@ -290,9 +292,7 @@ class NanoPlacementEnv(gym.Env):
         """Place gate with a single input on a Cartesian grid."""
         if self.node_to_action[self.actions[self.current_node]] == "INV":
             self.layout.create_not(signal, (x, y))
-        elif self.node_to_action[self.actions[self.current_node]] == "FAN-OUT":
-            self.layout.create_buf(signal, (x, y))
-        elif self.node_to_action[self.actions[self.current_node]] == "BUF":
+        elif self.node_to_action[self.actions[self.current_node]] in ("FAN-OUT", "BUF"):
             self.layout.create_buf(signal, (x, y))
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             self.layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
@@ -301,9 +301,7 @@ class NanoPlacementEnv(gym.Env):
         """Place gate with a single input on a hexagonal grid."""
         if self.node_to_action[self.actions[self.current_node]] == "INV":
             self.hex_layout.create_not(signal, (x, y))
-        elif self.node_to_action[self.actions[self.current_node]] == "FAN-OUT":
-            self.hex_layout.create_buf(signal, (x, y))
-        elif self.node_to_action[self.actions[self.current_node]] == "BUF":
+        elif self.node_to_action[self.actions[self.current_node]] in ("FAN-OUT", "BUF"):
             self.hex_layout.create_buf(signal, (x, y))
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             self.hex_layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
@@ -382,7 +380,8 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes[:, 0] = 0
                 possible_positions_nodes[:, self.layout_height - 1] = 0
             else:
-                raise Exception(f"Unsupported clocking scheme: {self.clocking_scheme}")
+                error_message = f"Unsupported clocking scheme: {self.clocking_scheme}"
+                raise Exception(error_message)
 
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             if self.clocking_scheme == "2DDWave":
@@ -396,7 +395,8 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes[:, 0] = 0
                 possible_positions_nodes[:, self.layout_height - 1] = 0
             else:
-                raise Exception(f"Unsupported clocking scheme: {self.clocking_scheme}")
+                error_message = f"Unsupported clocking scheme: {self.clocking_scheme}"
+                raise Exception(error_message)
 
         elif len(preceding_nodes) == 1 and self.node_to_action[self.actions[self.current_node]] != "OUTPUT":
             node = self.node_dict[preceding_nodes[0]]
@@ -442,86 +442,88 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         for node in self.node_dict:
-            if not self.layout.is_po_tile(self.layout.get_tile(self.node_dict[node])):
-                if (self.layout.fanout_size(self.node_dict[node]) == 0) or (
-                    self.layout.fanout_size(self.node_dict[node]) == 1 and self.network.is_fanout(node)
-                ):
-                    possible = False
-                    tile = self.layout.get_tile(self.node_dict[node])
-                    for zone in self.layout.outgoing_clocked_zones(tile):
-                        if (
-                            self.layout.is_empty_tile((zone.x, zone.y, 0))
-                            and zone.x != self.layout_width
-                            and zone.y != self.layout_height
-                        ):
-                            possible = True
-                        elif (
+            if (
+                not self.layout.is_po_tile(self.layout.get_tile(self.node_dict[node]))
+                and (self.layout.fanout_size(self.node_dict[node]) == 0)
+                or (self.layout.fanout_size(self.node_dict[node]) == 1 and self.network.is_fanout(node))
+            ):
+                possible = False
+                tile = self.layout.get_tile(self.node_dict[node])
+                for zone in self.layout.outgoing_clocked_zones(tile):
+                    if (
+                        self.layout.is_empty_tile((zone.x, zone.y, 0))
+                        and zone.x != self.layout_width
+                        and zone.y != self.layout_height
+                    ) or (
+                        (
                             self.layout.is_empty_tile((zone.x, zone.y, 1))
                             and zone.x != self.layout_width
                             and zone.y != self.layout_height
-                        ) and self.layout.get_node((zone.x, zone.y, 0)) not in self.node_dict.values():
-                            possible = True
-                    params = pyfiction.a_star_params()
-                    params.crossings = True
-
-                    width = self.layout_width + 1
-                    height = self.layout_height + 1
-                    if self.clocking_scheme == "RES":
-                        if ((self.layout_width + 1) % 4) == 1:
-                            width += 1
-                        elif ((self.layout_height + 1) % 4) == 2:
-                            height += 1
-                    self.layout.resize((width - 1, height - 1, 1))
-                    if self.clocking_scheme in ("USE", "RES"):
-                        goals = []
-                        if (width % 2 == 0) and (height % 2 == 0):
-                            goals.append((0, width - 1))
-                        elif (width % 2 == 1) and (height % 2 == 1):
-                            goals.append((width - 1, 0))
-                        elif (width % 2 == 0) and (height % 2 == 1):
-                            goals.append((width - 1, height - 1))
-                        elif (width % 2 == 1) and (height % 2 == 0):
-                            goals.append((width - 1, 0))
-                            goals.append((0, height - 1))
-                        else:
-                            raise Exception
-                        for goal in goals:
-                            overall = False
-                            if len(pyfiction.a_star(self.layout, tile, goal, params)) == 0:
-                                possible = False
-                            else:
-                                overall = True
-                            if overall:
-                                possible = True
-                    elif (
-                        self.clocking_scheme == "2DDWave"
-                        and possible
-                        and (
-                            len(
-                                pyfiction.a_star(
-                                    self.layout,
-                                    tile,
-                                    (
-                                        min(
-                                            self.layout_width,
-                                            self.layout_mask,
-                                        ),
-                                        min(
-                                            self.layout_height,
-                                            self.layout_mask,
-                                        ),
-                                    ),
-                                    params,
-                                )
-                            )
-                            == 0
                         )
+                        and self.layout.get_node((zone.x, zone.y, 0)) not in self.node_dict.values()
                     ):
-                        possible = False
-                    self.layout.resize((self.layout_width - 1, self.layout_height - 1, 1))
+                        possible = True
+                params = pyfiction.a_star_params()
+                params.crossings = True
 
-                    if not possible:
-                        self.placement_possible = False
+                width = self.layout_width + 1
+                height = self.layout_height + 1
+                if self.clocking_scheme == "RES":
+                    if ((self.layout_width + 1) % 4) == 1:
+                        width += 1
+                    elif ((self.layout_height + 1) % 4) == 2:
+                        height += 1
+                self.layout.resize((width - 1, height - 1, 1))
+                if self.clocking_scheme in ("USE", "RES"):
+                    goals = []
+                    if (width % 2 == 0) and (height % 2 == 0):
+                        goals.append((0, width - 1))
+                    elif (width % 2 == 1) and (height % 2 == 1):
+                        goals.append((width - 1, 0))
+                    elif (width % 2 == 0) and (height % 2 == 1):
+                        goals.append((width - 1, height - 1))
+                    elif (width % 2 == 1) and (height % 2 == 0):
+                        goals.append((width - 1, 0))
+                        goals.append((0, height - 1))
+                    else:
+                        raise Exception
+                    for goal in goals:
+                        overall = False
+                        if len(pyfiction.a_star(self.layout, tile, goal, params)) == 0:
+                            possible = False
+                        else:
+                            overall = True
+                        if overall:
+                            possible = True
+                elif (
+                    self.clocking_scheme == "2DDWave"
+                    and possible
+                    and (
+                        len(
+                            pyfiction.a_star(
+                                self.layout,
+                                tile,
+                                (
+                                    min(
+                                        self.layout_width,
+                                        self.layout_mask,
+                                    ),
+                                    min(
+                                        self.layout_height,
+                                        self.layout_mask,
+                                    ),
+                                ),
+                                params,
+                            )
+                        )
+                        == 0
+                    )
+                ):
+                    possible = False
+                self.layout.resize((self.layout_width - 1, self.layout_height - 1, 1))
+
+                if not possible:
+                    self.placement_possible = False
         mask_occupied = self.occupied_tiles.flatten(order="F") == 0
         mask = possible_positions_nodes.flatten(order="F") == 0
         if not any(mask):

@@ -44,60 +44,92 @@ def cartesian_to_hexagonal(
             y = k - x
             if y < layout_height and x < layout_width:
                 for z in range(2):
-                    node = (x, y, z)
-                    hex = to_hex((x, y, z), layout_height)
-                    if layout.is_pi_tile(node):
-                        hex_layout.create_pi(layout.get_input_name(layout.get_node(node)), hex)
-                    elif layout.is_po_tile(node):
+                    cartesian_coordinate = (x, y, z)
+                    hexagonal_coordinate = to_hex((x, y, z), layout_height)
+                    if layout.is_pi_tile(cartesian_coordinate):
+                        hex_layout.create_pi(
+                            layout.get_input_name(layout.get_node(cartesian_coordinate)), hexagonal_coordinate
+                        )
+                    elif layout.is_po_tile(cartesian_coordinate):
                         hex_layout.create_po(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            layout.get_output_name(layout.get_node(node)),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            layout.get_output_name(layout.get_node(cartesian_coordinate)),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_wire(layout.get_node(node)):
+                    elif layout.is_wire(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_buf(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_inv(layout.get_node(node)):
+                    elif layout.is_inv(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_not(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_and(layout.get_node(node)):
+                    elif layout.is_and(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_and(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[1], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[1], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_nand(layout.get_node(node)):
+                    elif layout.is_nand(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_nand(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[1], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[1], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_or(layout.get_node(node)):
+                    elif layout.is_or(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_or(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[1], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[1], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_nor(layout.get_node(node)):
+                    elif layout.is_nor(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_nor(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[1], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[1], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_xor(layout.get_node(node)):
+                    elif layout.is_xor(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_xor(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[1], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[1], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
-                    elif layout.is_xnor(layout.get_node(node)):
+                    elif layout.is_xnor(layout.get_node(cartesian_coordinate)):
                         hex_layout.create_xnor(
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[0], layout_height))),
-                            hex_layout.make_signal(hex_layout.get_node(to_hex(layout.fanins(node)[1], layout_height))),
-                            hex,
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[0], layout_height))
+                            ),
+                            hex_layout.make_signal(
+                                hex_layout.get_node(to_hex(layout.fanins(cartesian_coordinate)[1], layout_height))
+                            ),
+                            hexagonal_coordinate,
                         )
     return hex_layout

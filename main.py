@@ -5,8 +5,8 @@ from pathlib import Path
 import gym
 
 from placement_envs.utils import layout_dimensions
-from ppo_masked import MaskablePPO
 from ppo_masked.common.maskable.utils import get_action_masks
+from ppo_masked.ppo_mask import MaskablePPO
 
 env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
@@ -109,7 +109,8 @@ if __name__ == "__main__":
                 args.function
             ]
         else:
-            raise Exception(f"No predefined layout dimensions for {args.function} available")
+            error_message = f"No predefined layout dimensions for {args.function} available"
+            raise Exception(error_message)
 
     env = gym.make(
         env_id,

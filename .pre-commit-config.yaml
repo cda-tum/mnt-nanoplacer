@@ -69,12 +69,12 @@ repos:
       - id: prettier
         types_or: [yaml, markdown, html, css, javascript, json]
 
-  #- repo: https://github.com/charliermarsh/ruff-pre-commit
-  #  rev: v0.0.261
-  #  hooks:
-  #    - id: ruff
-  #      args: ["--fix"]
-  #      exclude: "ppo_masked"
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.261
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        exclude: "ppo_masked"
 
   # Clean jupyter notebooks
   - repo: https://github.com/srstevenson/nb-clean

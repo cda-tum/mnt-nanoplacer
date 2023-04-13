@@ -85,7 +85,10 @@ ignore = [
     "ANN102",  # Missing type annotation for cls in classmethod
     "E501",    # Line too long (Black is enough)
     "PLR2004", # Magic values
+    "PLR0912", # Too many branches
     "PLR0913", # Too many arguments
+    "PLR0915", # Too many statements
+    "PTH118", # `os.path.join()` should be replaced by `Path` with `/` operator
 ]
 
 # Exclude a variety of commonly ignored directories.

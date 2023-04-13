@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import networkx as nx
 from fiction import pyfiction
@@ -78,9 +78,9 @@ def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, di
     :return:    actions:           Topological sort of the network nodes
     :return:    dg:                Digraph representation of the logic network
     """
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    path = os.path.join(dir_path, f"../../benchmarks/{benchmark}/{function}.v")
-    network = pyfiction.read_logic_network(path)
+    dir_path = Path(__file__).parent.parent.parent.resolve()
+    path = dir_path / "benchmarks" / benchmark / f"{function}.v"
+    network = pyfiction.read_logic_network(str(path))
     params = pyfiction.fanout_substitution_params()
     params.strategy = pyfiction.substitution_strategy.DEPTH
     network = pyfiction.fanout_substitution(network, params)
@@ -126,5 +126,6 @@ def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, di
         elif network.is_buf(action):
             node_to_action[action] = "BUF"
         else:
-            raise Exception(f"{action}")
+            error_message = f"Unknown action: {action}"
+            raise Exception(error_message)
     return network, node_to_action, actions, dg
