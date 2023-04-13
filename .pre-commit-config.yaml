@@ -86,10 +86,7 @@ repos:
     rev: v1.2.0
     hooks:
       - id: mypy
-        files: ^(src|tests|setup.py)
         args: []
         additional_dependencies:
           - types-setuptools
-          - python_tsp
           - networkx
-          - mqt.ddsim
