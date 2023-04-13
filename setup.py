@@ -1,8 +1,6 @@
-from setuptools import setup
+#!/usr/bin/env python
 
-setup(
-    name="NanoPlaceR",
-    version="0.0.1",
-    install_requires=["gym==0.21.0", "stable_baselines3==1.8.0", "setuptools==65.5.0"],
-    py_modules=[],
-)
+import setuptools
+
+if __name__ == "__main__":
+    setuptools.setup(py_modules=[])

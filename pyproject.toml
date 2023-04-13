@@ -1,0 +1,130 @@
+[build-system]
+requires = [
+    "setuptools<=65.5.0",
+    "setuptools_scm[toml]>=7"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "NanoPlaceR"
+description = "MQT ProblemSolver - A MQT tool for Solving Problems Using Quantum Computing"
+readme = "README.md"
+authors = [
+    { name = "Simon Hofmann", email = "simon.t.hofmann@tum.de" },
+]
+keywords = ["FCN",  "physcial design"]
+license = { file = "LICENSE" }
+requires-python = "<3.10"
+dynamic = ["version"]
+
+dependencies = [
+    "setuptools==65.5.0",
+    "networkx==3.1",
+    "numpy==1.24.2",
+    "matplotlib==3.7.1",
+    "gym==0.21.0",
+    "tensorboard==2.12.1",
+    "torch==2.0.0",
+    "stable_baselines3==1.8.0",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+
+[project.urls]
+Homepage = "https://github.com/cda-tum/NanoPlaceR"
+"Bug Tracker" = "https://github.com/cda-tum/NanoPlaceR/issues"
+Discussions = "https://github.com/cda-tum/NanoPlaceR/discussions"
+Research = "https://www.cda.cit.tum.de/research/fcn/"
+
+[tool.setuptools_scm]
+
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+select = [
+    "E", "F", "W", # flake8
+    "A",           # flake8-builtins
+    "B",  "B904",  # flake8-bugbear
+    "I",           # isort
+    "ARG",         # flake8-unused-arguments
+    "C4",          # flake8-comprehensions
+    "EM",          # flake8-errmsg
+    "EXE",         # flake8-executable
+    "ICN",         # flake8-import-conventions
+    "ISC",         # flake8-implicit-str-concat
+    "PGH",         # pygrep-hooks
+    "PIE",         # flake8-pie
+    "PL",          # pylint
+    "PT",          # flake8-pytest-style
+    "PTH",         # flake8-use-pathlib
+    "Q",           # flake8-quotes
+    "RET",         # flake8-return
+    "RUF",         # Ruff-specific
+    "SIM",         # flake8-simplify
+    "TCH",         # flake8-type-checking
+    "UP",          # pyupgrade
+    "YTT",         # flake8-2020
+]
+ignore = [
+    "ANN101",  # Missing type annotation for self in method
+    "ANN102",  # Missing type annotation for cls in classmethod
+    "E501",    # Line too long (Black is enough)
+    "PLR2004", # Magic values
+    "PLR0913", # Too many arguments
+]
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    "__init__.py",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+line-length = 120
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+files = ["src", "tests", "setup.py"]
+python_version = "3.9"
+strict = true
+show_error_codes = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+warn_unreachable = true
+explicit_package_bases = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = ["networkx.*",  "numpy.*", "matplotlib.*", "gym.*", "tensorboard.*", "torch.*", "stable_baselines3"]
+ignore_missing_imports = true
