@@ -35,8 +35,6 @@ $ source venv/bin/activate
 ```
 
 NanoPlaceR heavily depends on fiction, whose python binding currently has to be installed from source (will be available as a python package in the future).
-Fiction utilizes the [SMT solver Z3](https://github.com/Z3Prover/z3).
-
 To install fiction and build it, run the following commands:
 
 ```console
