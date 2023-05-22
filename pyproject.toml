@@ -113,6 +113,7 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    ".svg"
 ]
 
 line-length = 120
@@ -131,3 +132,7 @@ pretty = true
 [[tool.mypy.overrides]]
 module = ["networkx.*",  "numpy.*", "matplotlib.*", "gym.*", "tensorboard.*", "torch.*", "stable_baselines3"]
 ignore_missing_imports = true
+
+[tool.codespell]
+skip = 'README.md,*svg'
+quiet-level = 3

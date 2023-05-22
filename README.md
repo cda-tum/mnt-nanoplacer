@@ -3,6 +3,13 @@
 
 # NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/mnt_light.svg" width="60%">
+    <img src="images/mnt_dark.svg" width="60%">
+  </picture>
+</p>
+
 NanoPlaceR is a tool for the physical design of FCN circuitry based on Reinforcement Learning.
 It can generate layouts for logic networks up to ~200 gates, while requiring ~50% less area than the state-of-the-art heuristic approach.
 
@@ -25,7 +32,7 @@ First, install virtualenv:
 $ pip install virtualenv
 ```
 
-Then create a new virtual environment in your your project folder and activate it:
+Then create a new virtual environment in your project folder and activate it:
 
 ```console
 $ mkdir nano_placement

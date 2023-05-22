@@ -56,6 +56,8 @@ repos:
     rev: "v2.2.4"
     hooks:
       - id: codespell
+        additional_dependencies:
+          - tomli
 
   # Format configuration files with prettier
   - repo: https://github.com/pre-commit/mirrors-prettier
