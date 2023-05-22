@@ -1,12 +1,12 @@
+# NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
+
 [![License: MIT][mit-badge]](https://opensource.org/licenses/MIT)
 [![Code style: black][black-badge]][black-link]
 
-# NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
-
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="images/mnt_light.svg" width="60%">
-    <img src="images/mnt_dark.svg" width="60%">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/mnt_light.svg" width="60%">
+    <img src="docs/_static/mnt_dark.svg" width="60%">
   </picture>
 </p>
 
@@ -19,7 +19,7 @@ To minimize the occurrence of unpromising partial placements, several checks con
 Furthermore, the routing of placed gates is incorporated directly into the placement step using established routing strategies.
 The following figure outlines the methodology:
 
-![](images/lbr.png)
+![](docs/_static/lbr.png)
 
 # Usage of NanoPlaceR
 
