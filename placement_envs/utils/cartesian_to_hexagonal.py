@@ -4,7 +4,7 @@ from typing import Union
 from fiction import pyfiction
 
 
-def to_hex(old_coord: Union[tuple, pyfiction.coordinate], height: int) -> tuple[int, int, int]:
+def to_hex(old_coord: Union[tuple, pyfiction.offset_coordinate], height: int) -> tuple[int, int, int]:
     """Transform Cartesian coordinate to the corresponding coordinate on the hexagonal grid.
 
     :param old_coord:   Coordinate on the Cartesian grid
