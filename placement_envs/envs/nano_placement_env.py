@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
-from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, to_hex
+from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete
 
 
 class NanoPlacementEnv(gym.Env):
@@ -39,13 +39,6 @@ class NanoPlacementEnv(gym.Env):
                 self.clocking_scheme,
             )
         )
-        if self.technology == "SiDB":
-            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1, 0), self.layout_height)[1]
-            hex_width = to_hex((self.layout_width - 1, 0, 0), self.layout_height)[0]
-            self.hex_layout = pyfiction.hexagonal_gate_layout(
-                (hex_width, hex_height, 1),
-                "ROW",
-            )
 
         self.benchmark = benchmark
         self.function = function
@@ -63,7 +56,6 @@ class NanoPlacementEnv(gym.Env):
 
         self.placement_possible = True
         self.node_dict = collections.defaultdict(int)
-        self.node_dict_hex = collections.defaultdict(int)
         self.max_placed_nodes = 0
         self.current_tries = 0
         self.max_tries = 0
@@ -88,19 +80,11 @@ class NanoPlacementEnv(gym.Env):
                 self.clocking_scheme,
             )
         )
-        if self.technology == "SiDB":
-            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1, 0), self.layout_height)[1]
-            hex_width = to_hex((self.layout_width - 1, 0, 0), self.layout_height)[0]
-            self.hex_layout = pyfiction.hexagonal_gate_layout(
-                (hex_width, hex_height, 1),
-                "ROW",
-            )
 
         self.current_node = 0
         self.current_tries = 0
         self.placement_possible = True
         self.node_dict = collections.defaultdict(int)
-        self.node_dict_hex = collections.defaultdict(int)
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         observation = self.current_node
@@ -297,15 +281,6 @@ class NanoPlacementEnv(gym.Env):
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             self.layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
 
-    def place_node_with_1_input_hex(self, x: int, y: int, signal: int):
-        """Place gate with a single input on a hexagonal grid."""
-        if self.node_to_action[self.actions[self.current_node]] == "INV":
-            self.hex_layout.create_not(signal, (x, y))
-        elif self.node_to_action[self.actions[self.current_node]] in ("FAN-OUT", "BUF"):
-            self.hex_layout.create_buf(signal, (x, y))
-        elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
-            self.hex_layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
-
     def place_node_with_2_inputs(self, x: int, y: int, signal_1: int, signal_2: int):
         """Place gate with two inputs on a Cartesian grid."""
         if self.node_to_action[self.actions[self.current_node]] == "AND":
@@ -323,29 +298,6 @@ class NanoPlacementEnv(gym.Env):
 
         elif self.node_to_action[self.actions[self.current_node]] == "XOR":
             self.layout.create_xor(
-                signal_1,
-                signal_2,
-                (x, y),
-            )
-        else:
-            raise Exception
-
-    def place_node_with_2_inputs_hex(self, x: int, y: int, signal_1: int, signal_2: int):
-        """Place gate with two inputs on a hexagonal grid."""
-        if self.node_to_action[self.actions[self.current_node]] == "AND":
-            self.hex_layout.create_and(
-                signal_1,
-                signal_2,
-                (x, y),
-            )
-        elif self.node_to_action[self.actions[self.current_node]] == "OR":
-            self.hex_layout.create_or(
-                signal_1,
-                signal_2,
-                (x, y),
-            )
-        elif self.node_to_action[self.actions[self.current_node]] == "XOR":
-            self.hex_layout.create_xor(
                 signal_1,
                 signal_2,
                 (x, y),
