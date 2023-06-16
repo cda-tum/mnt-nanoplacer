@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "setuptools<=67.8.0",
+    "setuptools>=67.8.0",
     "setuptools_scm[toml]>=7"
 ]
 build-backend = "setuptools.build_meta"
@@ -19,10 +19,9 @@ dynamic = ["version"]
 
 dependencies = [
     "gym==0.21.0",
-    "matplotlib>=3.7.1",
     "networkx>=3.1",
     "numpy>=1.24.3",
-    "pre-commit>=3.3.2",
+    "pre-commit>=3.3.3",
     "setuptools>=67.8.0",
     "stable_baselines3==1.8.0",
     "tensorboard>=2.13.0",

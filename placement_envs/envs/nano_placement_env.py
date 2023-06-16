@@ -3,7 +3,6 @@ import os
 from time import time
 
 import gym
-import matplotlib.pyplot as plt
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
@@ -263,14 +262,6 @@ class NanoPlacementEnv(gym.Env):
                 )
             finally:
                 pass
-
-    def plot_placement_times(self):
-        """Plot time at each new best placement."""
-        nodes = range(1, len(self.placement_times) + 1)
-        plt.plot(self.placement_times, nodes)
-        plt.ylabel("Nodes")
-        plt.xlabel("Training Time [s]")
-        plt.show()
 
     def place_node_with_1_input(self, x: int, y: int, signal: int):
         """Place gate with a single input on a Cartesian grid."""
