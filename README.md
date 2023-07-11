@@ -13,6 +13,8 @@
 NanoPlaceR is a tool for the physical design of FCN circuitry based on Reinforcement Learning.
 It can generate layouts for logic networks up to ~200 gates, while requiring ~50% less area than the state-of-the-art heuristic approach.
 
+Related publication presented at DAC: [paper](https://www.cda.cit.tum.de/files/eda/2023_dac_late_breaking_results_from_hybrid_design_automation_for_field_coupled_nanotechnologies.pdf) 
+
 Inspired by recent developments in the field of machine learning-aided design automation, this tool combines reinforcement learning with efficient path routing algorithms based on established algorithms such as A\* search.
 Masked Proximal Policy Optimization (PPO) is used to learn the placement of logic elements, which is further accelerated by incorporating an action mask computed based on the netlist structure and the last partial placement, ensuring valid and compact solutions.
 To minimize the occurrence of unpromising partial placements, several checks constantly ensure the early termination of sub-par solutions.
@@ -45,7 +47,7 @@ NanoPlaceR heavily depends on fiction, whose python binding currently has to be 
 To install fiction and build it, run the following commands:
 
 ```console
-(venv) $ git clone -b pyml --single-branch --recursive https://github.com/marcelwa/fiction.git
+(venv) $ git clone -b pyml --single-branch --recursive https://github.com/cda-tum/fiction.git
 (venv) $ cd fiction
 (venv) $ pip install .
 (venv) $ cd ..
