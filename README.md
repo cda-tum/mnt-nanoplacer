@@ -56,7 +56,7 @@ To install fiction and build it, run the following commands:
 After successfully installing pyfiction, clone this repository and install the dependencies:
 
 ```console
-(venv) $ git clone https://github.com/cda-tum/NanoPlaceR.git
+(venv) $ git clone https://github.com/cda-tum/mnt-nanoplacer.git
 (venv) $ cd NanoPlaceR
 (venv) $ pip install -r requirements.txt
 ```
