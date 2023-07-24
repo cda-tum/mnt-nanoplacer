@@ -6,7 +6,7 @@ import gym
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
-from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete
+from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, to_hex
 
 
 class NanoPlacementEnv(gym.Env):
@@ -38,6 +38,14 @@ class NanoPlacementEnv(gym.Env):
                 self.clocking_scheme,
             )
         )
+
+        if self.technology == "SiDB":
+            hex_height = to_hex((self.layout_width - 1, self.layout_height - 1, 0), self.layout_height)[1]
+            hex_width = to_hex((self.layout_width - 1, 0, 0), self.layout_height)[0]
+            self.hex_layout = pyfiction.hexagonal_gate_layout(
+                (hex_width, hex_height, 1),
+                "ROW",
+            )
 
         self.benchmark = benchmark
         self.function = function
