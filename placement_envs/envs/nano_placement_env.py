@@ -6,7 +6,7 @@ import gym
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
-from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, to_hex
+from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, optimize_post_placement, to_hex
 
 
 class NanoPlacementEnv(gym.Env):
@@ -22,6 +22,7 @@ class NanoPlacementEnv(gym.Env):
         benchmark: str = "trindade16",
         function: str = "mux21",
         verbose: int = 1,
+        optimize: bool = True,
     ):
         """Constructor."""
 
@@ -73,6 +74,7 @@ class NanoPlacementEnv(gym.Env):
         self.gates = np.zeros([self.layout_width, self.layout_height], dtype=int)
         self.verbose = verbose
         self.layout_mask = 8
+        self.optimize = optimize
 
     def reset(self, seed: int = None, options: dict = None) -> int:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
@@ -504,6 +506,8 @@ class NanoPlacementEnv(gym.Env):
             self.placement_times.append(time() - self.start)
             if self.current_node == len(self.actions):
                 print(f"Found solution after {time() - self.start:.2f}s")
+                if self.optimize:
+                    optimize_post_placement(self.layout)
         if self.current_node == len(self.actions):
             drvs = pyfiction.gate_level_drvs(self.layout)[1]
             if drvs < self.min_drvs:

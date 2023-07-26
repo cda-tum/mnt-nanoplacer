@@ -22,6 +22,7 @@ verbose = 0  # 0: Only show number of placed gates
 #              1: print layout after every new best placement
 #              2: print training metrics
 #              3: print layout and training metrics
+optimize = True
 
 
 if __name__ == "__main__":
@@ -101,6 +102,13 @@ if __name__ == "__main__":
         help="0: No information. 1: Print layout after every new best placement. "
         "2: Print training metrics. 3: 1 and 2 combined.",
     )
+    parser.add_argument(
+        "-o",
+        "--optimize",
+        action="store_true",
+        default=optimize,
+        help="If True, layout will be further optimized after placement.",
+    )
     args = parser.parse_args()
 
     if args.minimal_layout_dimension:
@@ -121,6 +129,7 @@ if __name__ == "__main__":
         benchmark=args.benchmark,
         function=args.function,
         verbose=1 if args.verbose in (1, 3) else 0,
+        optimize=args.optimize,
     )
     if args.reset_model or not Path.exists(
         Path(f"ppo_{args.technology}_{args.function}_{'ROW' if args.technology == 'SiDB' else args.clocking_scheme}")
