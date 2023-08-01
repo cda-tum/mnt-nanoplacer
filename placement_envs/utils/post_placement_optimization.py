@@ -382,6 +382,23 @@ def delete_wires(lyt, width, height):
             print(f"Row {y} can be deleted")
             delete_row(lyt, y, width, height)
 
+    for x in reversed(range(width + 1)):
+        found_column = True
+        for y in reversed(range(height + 1)):
+            if (
+                lyt.is_wire_tile((x, y))
+                and lyt.fanin_size(lyt.get_node((x, y))) == 1
+                and lyt.fanout_size(lyt.get_node((x, y))) == 1
+                and lyt.has_western_incoming_signal((x, y))
+                and lyt.has_eastern_outgoing_signal((x, y))
+            ) or lyt.is_empty_tile((x, y)):
+                pass
+            else:
+                found_column = False
+        if found_column:
+            print(f"Column {x} can be deleted")
+            delete_column(lyt, x, width, height)
+
 
 def delete_row(lyt, row_idx, width, height):
     fanins = {}
@@ -415,5 +432,41 @@ def delete_row(lyt, row_idx, width, height):
                             [
                                 lyt.make_signal(lyt.get_node((fanin.x, fanin.y - 1, fanin.z)))
                                 for fanin in fanins[y - 1][x][z]
+                            ],
+                        )
+
+
+def delete_column(lyt, column_idx, width, height):
+    fanins = {}
+    for x in range(column_idx, width + 1):
+        fanins[x] = {}
+        for y in range(height + 1):
+            fanins[x][y] = {}
+            for z in range(2):
+                if x == column_idx and lyt.fanins((x, y, z)):
+                    fanin_column = lyt.fanins((x, y, z))[0]
+                    fanin_next_column = lyt.fanins((x + 1, y, z))
+                    fanins[x][y][z] = []
+                    for fanin in fanin_next_column:
+                        if fanin.x == x:
+                            fanins[x][y][z].append(lyt.coord(fanin_column.x + 1, fanin_column.y, fanin_column.z))
+                        else:
+                            fanins[x][y][z].append(fanin)
+                else:
+                    fanins[x][y][z] = lyt.fanins((x + 1, y, z))
+        for y in range(height + 1):
+            for z in range(2):
+                old_pos = (x, y, z)
+                if not lyt.is_empty_tile(old_pos):
+                    if x == column_idx:
+                        lyt.clear_tile(old_pos)
+                    else:
+                        new_pos = (x - 1, y, z)
+                        lyt.move_node(
+                            lyt.get_node(old_pos),
+                            new_pos,
+                            [
+                                lyt.make_signal(lyt.get_node((fanin.x - 1, fanin.y, fanin.z)))
+                                for fanin in fanins[x - 1][y][z]
                             ],
                         )
