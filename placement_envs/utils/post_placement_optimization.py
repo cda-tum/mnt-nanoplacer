@@ -79,9 +79,12 @@ def optimize_output(lyt):
                 fanin = lyt.fanins(fanin)[0]
                 route.insert(0, fanin)
         paths.append(route)
+        lyt.move_node(lyt.get_node(po), po, [])
+
     min_x = max([route[1].x for route in paths])
     min_y = max([route[1].y for route in paths])
     updates = []
+    cleared = []
     for route in paths:
         dangling = None
         new_pos = None
@@ -91,6 +94,7 @@ def optimize_output(lyt):
                 dangling = tile
             elif not lyt.is_po_tile(tile) and lyt.is_wire_tile(tile) and lyt.fanout_size(lyt.get_node(tile)) != 2:
                 lyt.clear_tile(tile)
+                cleared.append(tile)
                 if not new_pos:
                     new_pos = tile
             elif dangling:
@@ -98,10 +102,42 @@ def optimize_output(lyt):
                     updates.append((tile, (new_pos.x, new_pos.y, 0), dangling))
                 moved = True
         if not moved:
-            lyt.move_node(lyt.get_node(route[-1]), route[1], [lyt.make_signal(lyt.get_node(route[0]))])
+            lyt.move_node(
+                lyt.get_node(route[-1]), (route[1].x, route[1].y, 0), [lyt.make_signal(lyt.get_node(route[0]))]
+            )
+    check_wires(lyt, cleared)
     for update in updates:
         tile, new_pos, dangling = update
-        lyt.move_node(lyt.get_node(tile), new_pos, [lyt.make_signal(lyt.get_node(dangling))])
+        if lyt.is_empty_tile(new_pos):
+            lyt.move_node(lyt.get_node(tile), new_pos, [lyt.make_signal(lyt.get_node(dangling))])
+        elif new_pos[0] == min_x:
+            lyt.create_buf(lyt.make_signal(lyt.get_node(dangling)), (new_pos[0], new_pos[1], 1))
+            if lyt.is_empty_tile((new_pos[0], new_pos[1] + 1, 0)):
+                lyt.move_node(
+                    lyt.get_node(tile),
+                    (new_pos[0], new_pos[1] + 1, 0),
+                    [lyt.make_signal(lyt.get_node((new_pos[0], new_pos[1], 1)))],
+                )
+            else:
+                lyt.move_node(
+                    lyt.get_node(tile),
+                    (new_pos[0] + 1, new_pos[1], 0),
+                    [lyt.make_signal(lyt.get_node((new_pos[0], new_pos[1], 1)))],
+                )
+        else:
+            lyt.create_buf(lyt.make_signal(lyt.get_node(dangling)), (new_pos[0], new_pos[1], 1))
+            if lyt.is_empty_tile((new_pos[0] + 1, new_pos[1], 0)):
+                lyt.move_node(
+                    lyt.get_node(tile),
+                    (new_pos[0] + 1, new_pos[1], 0),
+                    [lyt.make_signal(lyt.get_node((new_pos[0], new_pos[1], 1)))],
+                )
+            else:
+                lyt.move_node(
+                    lyt.get_node(tile),
+                    (new_pos[0], new_pos[1] + 1, 0),
+                    [lyt.make_signal(lyt.get_node((new_pos[0], new_pos[1], 1)))],
+                )
 
 
 def fix_dead_nodes(lyt, gt):
