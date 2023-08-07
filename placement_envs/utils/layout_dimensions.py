@@ -5,8 +5,8 @@ layout_dimensions = {
             "xor2": (3, 6),
             "xnor2": (3, 6),
             "HA": (4, 6),
-            "FA": (6, 6),
-            "par_gen": (8, 8),
+            "FA": (4, 7),
+            "par_gen": (7, 9),
             "par_check": (9, 9),
         },
         "fontes18": {
