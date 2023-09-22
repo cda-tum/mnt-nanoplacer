@@ -6,7 +6,7 @@ import gym
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
-from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, optimize_post_placement, to_hex
+from utils import cartesian_to_hexagonal, create_action_list, map_to_multidiscrete, to_hex
 
 
 class NanoPlacementEnv(gym.Env):
@@ -507,7 +507,9 @@ class NanoPlacementEnv(gym.Env):
             if self.current_node == len(self.actions):
                 print(f"Found solution after {time() - self.start:.2f}s")
                 if self.optimize:
-                    optimize_post_placement(self.layout)
+                    pyfiction.post_layout_optimization(
+                        self.layout, statistics=pyfiction.post_layout_optimization_stats()
+                    )
         if self.current_node == len(self.actions):
             drvs = pyfiction.gate_level_drvs(self.layout)[1]
             if drvs < self.min_drvs:
