@@ -6,7 +6,8 @@ import gym
 import numpy as np
 from fiction import pyfiction
 from gym import spaces
-from utils import create_action_list, map_to_multidiscrete
+
+from ..utils import create_action_list, map_to_multidiscrete
 
 
 class NanoPlacementEnv(gym.Env):
@@ -59,7 +60,6 @@ class NanoPlacementEnv(gym.Env):
         self.max_placed_nodes = 0
         self.current_tries = 0
         self.max_tries = 0
-        self.min_drvs = np.inf
         self.start = time()
         self.placement_times = []
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
@@ -495,15 +495,14 @@ class NanoPlacementEnv(gym.Env):
             if self.current_node == len(self.actions):
                 print(f"Found solution after {time() - self.start:.2f}s")
                 if self.optimize:
+                    print(f"Dimension before optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
                     pyfiction.post_layout_optimization(
                         self.layout, statistics=pyfiction.post_layout_optimization_stats()
                     )
-        if self.current_node == len(self.actions):
-            drvs = pyfiction.gate_level_drvs(self.layout)[1]
-            if drvs < self.min_drvs:
-                print(f"Found improved solution with {drvs} drvs.")
+                    print(f"Dimension after optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
                 self.create_cell_layout()
-                self.min_drvs = drvs
+                eq = pyfiction.equivalence_checking(self.layout, self.network)
+                print(eq)
 
         return reward, done
 
