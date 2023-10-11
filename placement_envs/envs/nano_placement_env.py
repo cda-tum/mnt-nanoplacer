@@ -121,7 +121,7 @@ class NanoPlacementEnv(gym.Env):
         else:
             placed_node = 0
             if self.node_to_action[self.actions[self.current_node]] == "INPUT":
-                self.layout.create_pi(f"x{self.actions[self.current_node]}", (x, y))
+                self.layout.create_pi(f"{self.network.get_name(self.actions[self.current_node])}", (x, y))
                 placed_node = 1
             elif self.node_to_action[self.actions[self.current_node]] in [
                 "AND",
@@ -268,7 +268,11 @@ class NanoPlacementEnv(gym.Env):
         elif self.node_to_action[self.actions[self.current_node]] in ("FAN-OUT", "BUF"):
             self.layout.create_buf(signal, (x, y))
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
-            self.layout.create_po(signal, f"f{self.actions[self.current_node]}", (x, y))
+            self.layout.create_po(
+                signal,
+                f"{self.network.get_output_name(self.network.po_index(self.actions[self.current_node]))}",
+                (x, y),
+            )
 
     def place_node_with_2_inputs(self, x: int, y: int, signal_1: int, signal_2: int):
         """Place gate with two inputs on a Cartesian grid."""
@@ -496,9 +500,7 @@ class NanoPlacementEnv(gym.Env):
                 print(f"Found solution after {time() - self.start:.2f}s")
                 if self.optimize:
                     print(f"Dimension before optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
-                    pyfiction.post_layout_optimization(
-                        self.layout, statistics=pyfiction.post_layout_optimization_stats()
-                    )
+                    pyfiction.post_layout_optimization(self.layout)
                     print(f"Dimension after optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
                 self.create_cell_layout()
                 eq = pyfiction.equivalence_checking(self.layout, self.network)
