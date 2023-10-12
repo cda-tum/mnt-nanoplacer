@@ -71,7 +71,7 @@ You can either change the parameters (e.g. logic function, clocking scheme, layo
 
 ```
 (venv) $ python main.py -h
-usage: main.py [-h] [-b {fontes18,trindade16,EPFL,TOY,ISCAS85}] [-f FUNCTION] [-c {2DDWave,USE, RES}] [-t {QCA,SiDB}] [-l] [-lw LAYOUT_WIDTH] [-lh LAYOUT_HEIGHT] [-ts TIME_STEPS] [-r] [-v {0,1}]
+usage: main.py [-h] [-b {fontes18,trindade16,EPFL,TOY,ISCAS85}] [-f FUNCTION] [-c {2DDWave,USE, RES}] [-t {QCA,SiDB, Gate-level}] [-l] [-lw LAYOUT_WIDTH] [-lh LAYOUT_HEIGHT] [-ts TIME_STEPS] [-r] [-v {0,1}]
 
 
 Optional arguments:
@@ -79,7 +79,7 @@ Optional arguments:
   -b, --benchmark                  Benchmark set.
   -f, --function                   Logic function to generate layout for.
   -c, --clocking_scheme            Underlying clocking scheme.
-  -t, --technology                 Underlying technology (QCA, SiDB or technology-independent gate-level layout).
+  -t, --technology                 Underlying technology (QCA, SiDB or technology-independent Gate-level layout).
   -l, --minimal_layout_dimension   If True, experimentally found minimal layout dimensions are used.
   -lw, --layout_width              User defined layout width.
   -lh, --layout_height             User defined layout height.
