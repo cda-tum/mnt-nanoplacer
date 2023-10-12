@@ -79,7 +79,7 @@ Optional arguments:
   -b, --benchmark                  Benchmark set.
   -f, --function                   Logic function to generate layout for.
   -c, --clocking_scheme            Underlying clocking scheme.
-  -t, --technology                 Underlying technology (QCA or SiDB).
+  -t, --technology                 Underlying technology (QCA, SiDB or technology-independent gate-level layout).
   -l, --minimal_layout_dimension   If True, experimentally found minimal layout dimensions are used.
   -lw, --layout_width              User defined layout width.
   -lh, --layout_height             User defined layout height.
