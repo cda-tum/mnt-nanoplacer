@@ -54,9 +54,9 @@ if __name__ == "__main__":
         "-t",
         "--technology",
         type=str,
-        choices=["QCA", "SiDB"],
+        choices=["QCA", "SiDB", "Gate-level"],
         default=technology,
-        help="Underlying technology (QCA or SiDB).",
+        help="Underlying technology (QCA, SiDB or technology-independent Gate-level).",
     )
     parser.add_argument(
         "-l",

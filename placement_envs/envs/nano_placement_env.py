@@ -240,8 +240,9 @@ class NanoPlacementEnv(gym.Env):
         info = {}
         return observation, reward, done, info
 
-    def create_cell_layout(self):
-        """Creates cell layout and saves it as .svg for QCA and .dot for SiDB."""
+    def save_layout(self):
+        """Creates cell layout and saves it as .svg for QCA and .dot for SiDB.
+        If technology is set to gate-level, it will be saved as an .fgl file."""
         if self.technology == "QCA":
             try:
                 cell_layout = pyfiction.apply_qca_one_library(self.layout)
@@ -260,6 +261,13 @@ class NanoPlacementEnv(gym.Env):
                 pyfiction.write_dot_layout(hex_layout, os.path.join("images", f"{self.function}_ROW_sidb.dot"))
             finally:
                 pass
+        elif self.technology == "Gate-level":
+            pyfiction.write_fgl_layout(
+                self.layout, os.path.join("images", f"{self.function}_{self.clocking_scheme}_gate_level.fgl")
+            )
+        else:
+            error_message = f"Not a technology: {self.technology}"
+            raise Exception(error_message)
 
     def place_node_with_1_input(self, x: int, y: int, signal: int):
         """Place gate with a single input on a Cartesian grid."""
@@ -502,7 +510,7 @@ class NanoPlacementEnv(gym.Env):
                     print(f"Dimension before optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
                     pyfiction.post_layout_optimization(self.layout)
                     print(f"Dimension after optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
-                self.create_cell_layout()
+                self.save_layout()
                 eq = pyfiction.equivalence_checking(self.layout, self.network)
                 print(eq)
 
