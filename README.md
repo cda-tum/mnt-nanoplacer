@@ -1,11 +1,9 @@
 [![PyPI](https://img.shields.io/pypi/v/mnt.nanoplacer?logo=pypi&style=flat-square)](https://pypi.org/project/mnt.nanoplacer/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Bindings](https://img.shields.io/github/actions/workflow/status/cda-tum/mnt-nanoplacer/deploy.yml?branch=main&style=flat-square&logo=github&label=python)](https://github.com/cda-tum/mnt-nanoplacer/actions/workflows/deploy.yml)
+[![Code style: black][black-badge]][black-link]
 
 # NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
-
-[![License: MIT][mit-badge]](https://opensource.org/licenses/MIT)
-[![Code style: black][black-badge]][black-link]
 
 <p align="center">
   <picture>
@@ -47,28 +45,10 @@ $ python -m venv venv
 $ source venv/bin/activate
 ```
 
-NanoPlaceR heavily depends on fiction, whose python binding currently has to be installed from source (will be available as a python package in the future).
-To install fiction and build it, run the following commands:
+NanoPlaceR can be installed via pip:
 
 ```console
-(venv) $ git clone -b pyml --single-branch --recursive https://github.com/cda-tum/fiction.git
-(venv) $ cd fiction
-(venv) $ pip install .
-(venv) $ cd ..
-```
-
-After successfully installing pyfiction, clone this repository and install the dependencies:
-
-```console
-(venv) $ git clone https://github.com/cda-tum/mnt-nanoplacer.git
-(venv) $ cd NanoPlaceR
-(venv) $ pip install -r requirements.txt
-```
-
-To register the environment, install the package locally:
-
-```console
-(venv) $ pip install -e .
+(venv) $ pip install mnt.nanoplacer
 ```
 
 You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in `main.py` or simply use the tool in the command line.
@@ -100,12 +80,10 @@ Optional arguments:
 ├── images/                           # generated layouts in .svg format are saved here
 ├── models/                           # ppo models
 ├── placement_envs/
-│ ├── envs/
-│   └── nano_placement_env/           # placement environment
+│ ├── nano_placement_env/           # placement environment
 │ ├── utils/
 │   └── placement_utils/              # placement util functions
 │   └── layout_dimenions/             # predefined layout dimensions for certain functions
-├── ppo_masked/                       # ppo mask implementation adapted from sb3-contrib
 ├── tensorboard/                      # tensorboard log directory
 ```
 
