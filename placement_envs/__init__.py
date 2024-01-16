@@ -1,6 +1,3 @@
-from gym.envs.registration import register
+from placement_envs.nano_placement_env import NanoPlacementEnv
 
-register(
-    id="placement_envs/NanoPlacementEnv-v0",
-    entry_point="placement_envs.envs:NanoPlacementEnv",
-)
+__all__ = ["NanoPlacementEnv"]

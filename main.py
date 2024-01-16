@@ -2,11 +2,12 @@ import os
 from argparse import ArgumentParser
 from pathlib import Path
 
-import gym
+from sb3_contrib import MaskablePPO
+from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
+from sb3_contrib.common.maskable.utils import get_action_masks
 
+from placement_envs import NanoPlacementEnv
 from placement_envs.utils import layout_dimensions
-from ppo_masked.common.maskable.utils import get_action_masks
-from ppo_masked.ppo_mask import MaskablePPO
 
 env_id = "placement_envs/NanoPlacementEnv-v0"
 clocking_scheme = "2DDWave"
@@ -120,8 +121,7 @@ if __name__ == "__main__":
             error_message = f"No predefined layout dimensions for {args.function} available"
             raise Exception(error_message)
 
-    env = gym.make(
-        env_id,
+    env = NanoPlacementEnv(
         clocking_scheme=args.clocking_scheme,
         technology=technology,
         layout_width=args.layout_width,
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         Path(f"ppo_{args.technology}_{args.function}_{'ROW' if args.technology == 'SiDB' else args.clocking_scheme}")
     ):
         model = MaskablePPO(
-            "MlpPolicy",
+            MaskableActorCriticPolicy,
             env,
             batch_size=512,
             verbose=1 if args.verbose in (2, 3) else 0,

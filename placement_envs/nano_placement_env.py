@@ -2,12 +2,11 @@ import collections
 import os
 from time import time
 
-import gym
+import gymnasium as gym
 import numpy as np
-from fiction import pyfiction
-from gym import spaces
+from mnt import pyfiction
 
-from ..utils import create_action_list, map_to_multidiscrete
+from placement_envs.utils import create_action_list, map_to_multidiscrete
 
 
 class NanoPlacementEnv(gym.Env):
@@ -51,9 +50,9 @@ class NanoPlacementEnv(gym.Env):
             self.pi_names,
             self.po_names,
         ) = create_action_list(self.benchmark, self.function)
-        self.observation_space = spaces.Discrete(max(self.actions))
+        self.observation_space = gym.spaces.Discrete(max(self.actions))
 
-        self.action_space = spaces.Discrete(self.layout_width * self.layout_height)
+        self.action_space = gym.spaces.Discrete(self.layout_width * self.layout_height)
 
         self.current_node = 0
         self.current_pi = 0
@@ -104,7 +103,7 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask_width = 4
         self.layout_mask_height = 4
 
-        return observation
+        return observation, {}
 
     def step(self, action: int) -> tuple[int, float, bool, dict]:
         """Taking a step in the environment includes:
@@ -249,7 +248,7 @@ class NanoPlacementEnv(gym.Env):
         observation = self.current_node
 
         info = {}
-        return observation, reward, done, info
+        return observation, reward, done, False, info
 
     def save_layout(self):
         """Creates cell layout and saves it as .svg for QCA and .dot for SiDB.
