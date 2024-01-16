@@ -4,9 +4,9 @@ from time import time
 
 import gymnasium as gym
 import numpy as np
-from mnt import pyfiction
 
-from src.mnt.nanoplacer.placement_envs.utils import create_action_list, map_to_multidiscrete
+from mnt import pyfiction
+from mnt.nanoplacer.placement_envs.utils import create_action_list, map_to_multidiscrete
 
 
 class NanoPlacementEnv(gym.Env):

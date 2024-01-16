@@ -5,8 +5,8 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.maskable.utils import get_action_masks
 
-from src.mnt.nanoplacer.placement_envs import NanoPlacementEnv
-from src.mnt.nanoplacer.placement_envs.utils import layout_dimensions
+from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
+from mnt.nanoplacer.placement_envs.utils import layout_dimensions
 
 
 def create_layout(
@@ -22,6 +22,10 @@ def create_layout(
     verbose,
     optimize,
 ):
+    for folder in ["images", "models", "tensorboard"]:
+        if not Path.exists(Path(folder)):
+            Path.mkdir(Path(folder), parents=True)
+
     if minimal_layout_dimension:
         if function in layout_dimensions[clocking_scheme][benchmark]:
             layout_width, layout_height = layout_dimensions[clocking_scheme][benchmark][function]
@@ -56,7 +60,7 @@ def create_layout(
     else:
         model = MaskablePPO.load(
             os.path.join(
-                "../../../models",
+                "models",
                 f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
             ),
             env,
@@ -72,7 +76,7 @@ def create_layout(
 
     model.save(
         os.path.join(
-            "../../../models",
+            "models",
             f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
         )
     )
@@ -98,13 +102,13 @@ def create_layout(
 
 
 if __name__ == "__main__":
+    benchmark = "trindade16"
+    function = "mux21"
     clocking_scheme = "2DDWave"
     technology = "QCA"
     minimal_layout_dimension = True  # if False, user specified layout dimensions are chosen
     layout_width = 3
     layout_height = 4
-    benchmark = "trindade16"
-    function = "mux21"
     time_steps = 10000
     reset_model = True
     verbose = 0  # 0: Only show number of placed gates
@@ -114,15 +118,15 @@ if __name__ == "__main__":
     optimize = True
 
     create_layout(
-        benchmark,
-        function,
-        clocking_scheme,
-        technology,
-        minimal_layout_dimension,
-        layout_width,
-        layout_height,
-        time_steps,
-        reset_model,
-        verbose,
-        optimize,
+        benchmark=benchmark,
+        function=function,
+        clocking_scheme=clocking_scheme,
+        technology=technology,
+        minimal_layout_dimension=minimal_layout_dimension,
+        layout_width=layout_width,
+        layout_height=layout_height,
+        time_steps=time_steps,
+        reset_model=reset_model,
+        verbose=verbose,
+        optimize=optimize,
     )
