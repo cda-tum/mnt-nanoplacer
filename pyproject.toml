@@ -38,6 +38,8 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
@@ -50,7 +52,6 @@ Discussions = "https://github.com/cda-tum/NanoPlaceR/discussions"
 Research = "https://www.cda.cit.tum.de/research/fcn/"
 
 [tool.setuptools_scm]
-
 
 [tool.black]
 line-length = 120

@@ -276,7 +276,7 @@ class NanoPlacementEnv(gym.Env):
             pyfiction.write_fgl_layout(
                 self.layout,
                 os.path.join(
-                    "mnt-bench",
+                    "images",
                     f"{self.function}_ONE_{self.clocking_scheme}_NanoPlaceR_{'Un' if not self.optimize else ''}Opt_UnOrd.fgl",
                 ),
             )
