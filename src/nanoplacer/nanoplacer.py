@@ -5,8 +5,8 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.maskable.utils import get_action_masks
 
-from placement_envs import NanoPlacementEnv
-from placement_envs.utils import layout_dimensions
+from src.nanoplacer.placement_envs import NanoPlacementEnv
+from src.nanoplacer.placement_envs.utils import layout_dimensions
 
 
 def create_layout(
@@ -56,7 +56,7 @@ def create_layout(
     else:
         model = MaskablePPO.load(
             os.path.join(
-                "models",
+                "../../models",
                 f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
             ),
             env,
@@ -72,7 +72,7 @@ def create_layout(
 
     model.save(
         os.path.join(
-            "models",
+            "../../models",
             f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
         )
     )
