@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "setuptools==65.5.0",
+    "setuptools==65.5.1",
     "setuptools_scm[toml]>=7"
 ]
 build-backend = "setuptools.build_meta"
@@ -22,7 +22,7 @@ dependencies = [
     "networkx>=3.1",
     "numpy>=1.24.3",
     "pre-commit>=3.3.3",
-    "setuptools==65.5.0",
+    "setuptools==65.5.1",
     "stable_baselines3==1.8.0",
     "tensorboard>=2.13.0",
     "torch>=2.0.1",
