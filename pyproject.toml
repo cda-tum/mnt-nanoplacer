@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "NanoPlaceR"
+name = "mnt.nanoplacer"
 description = "NanoPlaceR - An open-source framework for placement and routing of Field-coupled Nanotechnologies based on reinforcement learning."
 readme = "README.md"
 authors = [
