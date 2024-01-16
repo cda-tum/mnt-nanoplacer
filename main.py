@@ -15,9 +15,9 @@ technology = "QCA"
 minimal_layout_dimension = False  # if False, user specified layout dimensions are chosen
 layout_width = 50
 layout_height = 50
-benchmark = "fontes18"
-function = "parity"
-time_steps = 1000000
+benchmark = "trindade16"
+function = "mux21"
+time_steps = 10000
 reset_model = True
 verbose = 0  # 0: Only show number of placed gates
 #              1: print layout after every new best placement
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     )
 
     # reset environment
-    obs = env.reset()
+    obs, info = env.reset()
     terminated = False
 
     while not terminated:
@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
         # place gate, route it and receive reward of +1 if successful, 0 else
         # placement is terminated if no further feasible placement is possible
-        obs, reward, terminated, info = env.step(action)
+        obs, reward, terminated, truncated, info = env.step(action)
 
         # print current layout
         if args.verbose == 1:

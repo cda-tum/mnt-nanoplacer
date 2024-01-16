@@ -72,7 +72,7 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask_height = 4
         self.optimize = optimize if self.clocking_scheme == "2DDWave" else False
 
-    def reset(self, seed: int = None, options: dict = None) -> int:  # noqa: ARG002
+    def reset(self, seed: int = None, options: dict = None) -> tuple[int, dict]:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
 
         :param seed:       Sets random seed (not implemented)
@@ -105,7 +105,7 @@ class NanoPlacementEnv(gym.Env):
 
         return observation, {}
 
-    def step(self, action: int) -> tuple[int, float, bool, dict]:
+    def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
         """Taking a step in the environment includes:
             - placing the gate
             - try to route it with it(s) predecessor(s)
