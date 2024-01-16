@@ -51,25 +51,40 @@ NanoPlaceR can be installed via pip:
 (venv) $ pip install mnt.nanoplacer
 ```
 
-You can either change the parameters (e.g. logic function, clocking scheme, layout width etc.) in `main.py` or simply use the tool in the command line.
+You can then create the desired layout based on specified parameters (e.g. logic function, clocking scheme, layout width etc.).
 
 ```
-(venv) $ python main.py -h
-usage: main.py [-h] [-b {fontes18,trindade16,EPFL,TOY,ISCAS85}] [-f FUNCTION] [-c {2DDWave,USE, RES}] [-t {QCA,SiDB, Gate-level}] [-l] [-lw LAYOUT_WIDTH] [-lh LAYOUT_HEIGHT] [-ts TIME_STEPS] [-r] [-v {0,1}]
+from mnt import nanoplacer
 
+if __name__ == "__main__":
+    clocking_scheme = "2DDWave"  # 2DDWave,USE, RES, ESR
+    technology = "QCA"  # QCA, SiDB, Gate-level
+    minimal_layout_dimension = True  # if True, experimentally found minimal layout dimensions, else user specified layout dimensions are chosen
+    layout_width = 3
+    layout_height = 4
+    benchmark = "trindade16"  # fontes18, trindade16, EPFL, TOY, ISCAS85
+    function = "mux21"
+    time_steps = 10000  # number of time steps to train the RL agent.
+    reset_model = True  # if True, reset saved model and train from scratch.
+    verbose = 0  # 0: Only show number of placed gates
+    #              1: print layout after every new best placement
+    #              2: print training metrics
+    #              3: print layout and training metrics
+    optimize = True
 
-Optional arguments:
-  -h, --help                       Show this help message and exit.
-  -b, --benchmark                  Benchmark set.
-  -f, --function                   Logic function to generate layout for.
-  -c, --clocking_scheme            Underlying clocking scheme.
-  -t, --technology                 Underlying technology (QCA, SiDB or technology-independent Gate-level layout).
-  -l, --minimal_layout_dimension   If True, experimentally found minimal layout dimensions are used.
-  -lw, --layout_width              User defined layout width.
-  -lh, --layout_height             User defined layout height.
-  -ts, --time_steps                Number of time steps to train the RL agent.
-  -r,  --reset_model               If True, reset saved model and train from scratch.
-  -v,  --verbosity                 0: No information. 1: Print layout after every new best placement. 2: Print training metrics. 3: 1 and 2 combined.
+    nanoplacer.create_layout(
+        benchmark,
+        function,
+        clocking_scheme,
+        technology,
+        minimal_layout_dimension,
+        layout_width,
+        layout_height,
+        time_steps,
+        reset_model,
+        verbose,
+        optimize,
+    )
 ```
 
 # Repository Structure
