@@ -57,13 +57,13 @@ You can then create the desired layout based on specified parameters (e.g. logic
 from mnt import nanoplacer
 
 if __name__ == "__main__":
+    benchmark = "trindade16"  # fontes18, trindade16, EPFL, TOY, ISCAS85
+    function = "mux21"
     clocking_scheme = "2DDWave"  # 2DDWave,USE, RES, ESR
     technology = "QCA"  # QCA, SiDB, Gate-level
     minimal_layout_dimension = True  # if True, experimentally found minimal layout dimensions, else user specified layout dimensions are chosen
     layout_width = 3
     layout_height = 4
-    benchmark = "trindade16"  # fontes18, trindade16, EPFL, TOY, ISCAS85
-    function = "mux21"
     time_steps = 10000  # number of time steps to train the RL agent.
     reset_model = True  # if True, reset saved model and train from scratch.
     verbose = 0  # 0: Only show number of placed gates
@@ -73,17 +73,17 @@ if __name__ == "__main__":
     optimize = True
 
     nanoplacer.create_layout(
-        benchmark,
-        function,
-        clocking_scheme,
-        technology,
-        minimal_layout_dimension,
-        layout_width,
-        layout_height,
-        time_steps,
-        reset_model,
-        verbose,
-        optimize,
+        benchmark=benchmark,
+        function=function,
+        clocking_scheme=clocking_scheme,
+        technology=technology,
+        minimal_layout_dimension=minimal_layout_dimension,
+        layout_width=layout_width,
+        layout_height=layout_height,
+        time_steps=time_steps,
+        reset_model=reset_model,
+        verbose=verbose,
+        optimize=optimize,
     )
 ```
 
@@ -91,10 +91,10 @@ if __name__ == "__main__":
 
 ```
 .
-├── benchmarks/                       # common benchmark sets
-├── images/                           # generated layouts in .svg format are saved here
-├── models/                           # ppo models
 ├── placement_envs/
+│ ├── benchmarks/                       # common benchmark sets
+│ ├── images/                           # generated layouts in .svg format are saved here
+│ ├── models/                           # ppo models
 │ ├── nano_placement_env/           # placement environment
 │ ├── utils/
 │   └── placement_utils/              # placement util functions
