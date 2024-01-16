@@ -67,7 +67,9 @@ def topological_sort(dg: nx.DiGraph) -> int:
     yield from topological_generations(dg)
 
 
-def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, dict[int, str], list[int], nx.DiGraph]:
+def create_action_list(
+    benchmark, function
+) -> tuple[pyfiction.logic_network, dict[int, str], list[int], nx.DiGraph, list[str], list[str]]:
     """Create a topological odering of the network and a mapping of node to gate type.
 
     :param benchmark:    Benchmark set
@@ -81,6 +83,13 @@ def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, di
     dir_path = Path(__file__).parent.parent.parent.resolve()
     path = dir_path / "benchmarks" / benchmark / f"{function}.v"
     network = pyfiction.read_logic_network(str(path))
+
+    pi_names = [network.get_name(pi) for pi in network.pis()]
+    po_names = [network.get_output_name(network.po_index(po)) for po in network.pos()]
+
+    # mapping_params = pyfiction.and_or_not()
+    # network = pyfiction.technology_mapping(network, mapping_params)
+
     params = pyfiction.fanout_substitution_params()
     params.strategy = pyfiction.substitution_strategy.DEPTH
     network = pyfiction.fanout_substitution(network, params)
@@ -89,15 +98,23 @@ def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, di
 
     # add nodes
     dg.add_nodes_from(network.pis())
-    dg.add_nodes_from(network.pos())
-    dg.add_nodes_from(network.gates())
+    for gate in network.gates():
+        if gate not in network.pos():
+            dg.add_node(gate)
 
     # add edges
-    for x in range(max(network.gates()) + 1):
-        for pre in network.fanins(x):
-            dg.add_edge(pre, x)
+    for x in network.gates():
+        if x not in network.pos():
+            for pre in network.fanins(x):
+                dg.add_edge(pre, x)
 
     actions = list(topological_sort(dg))
+
+    for po in network.pos():
+        dg.add_node(po)
+        for pre in network.fanins(po):
+            dg.add_edge(pre, po)
+        actions.append(po)
 
     node_to_action = {}
     for action in actions:
@@ -128,4 +145,4 @@ def create_action_list(benchmark, function) -> tuple[pyfiction.logic_network, di
         else:
             error_message = f"Unknown action: {action}"
             raise Exception(error_message)
-    return network, node_to_action, actions, dg
+    return network, node_to_action, actions, dg, pi_names, po_names

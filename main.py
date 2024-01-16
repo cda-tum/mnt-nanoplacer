@@ -46,7 +46,7 @@ if __name__ == "__main__":
         "-c",
         "--clocking_scheme",
         type=str,
-        choices=["2DDWave", "USE", "RES"],
+        choices=["2DDWave", "USE", "RES", "ESR"],
         default=clocking_scheme,
         help="Underlying clocking scheme.",
     )
