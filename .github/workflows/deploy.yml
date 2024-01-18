@@ -32,6 +32,8 @@ jobs:
         run: pipx run build --wheel
       - name: Install wheel
         run: python -m pip install --verbose dist/*.whl
+      - name: Run tests
+        run: python -m unittest
       - uses: actions/upload-artifact@v4
         with:
           name: "artifact-wheel"
@@ -52,6 +54,8 @@ jobs:
         run: pipx run build --sdist
       - name: Install sdist
         run: python -m pip install --verbose dist/*.tar.gz
+      - name: Run tests
+        run: python -m unittest
       - uses: actions/upload-artifact@v4
         with:
           path: dist/*.tar.gz
