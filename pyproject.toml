@@ -45,6 +45,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=7.2"]
+coverage = ["mnt.nanoplacer[test]", "pytest-cov[toml]"]
+
 [project.scripts]
 "mnt.nanoplacer" = "mnt.nanoplacer.main:start"
 

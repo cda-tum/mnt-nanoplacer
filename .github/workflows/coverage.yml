@@ -23,8 +23,6 @@ jobs:
           python-version: "3.11"
       - name: Install MNT NanoPlaceR
         run: pip install -e .[coverage]
-      - name: Install Pytest
-        run: pip install pytest
       - name: Generate Report
         run: pytest -v --cov --cov-report=xml
         env:
