@@ -2,13 +2,15 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Bindings](https://img.shields.io/github/actions/workflow/status/cda-tum/mnt-nanoplacer/deploy.yml?branch=main&style=flat-square&logo=github&label=python)](https://github.com/cda-tum/mnt-nanoplacer/actions/workflows/deploy.yml)
 [![Code style: black][black-badge]][black-link]
+[![CI](https://img.shields.io/github/actions/workflow/status/cda-tum/mnt-bench/coverage.yml?branch=main&style=flat-square&logo=github&label=coverage)](https://github.com/cda-tum/mnt-nanoplacer/actions/workflows/coverage.yml)
+[![codecov](https://img.shields.io/codecov/c/github/cda-tum/mnt-bench?style=flat-square&logo=codecov)](https://codecov.io/gh/cda-tum/mnt-nanoplacer)
 
 # NanoPlaceR: Placement and Routing for Field-coupled Nanocomputing (FCN) based on Reinforcement Learning
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cda-tum/mnt-bench/main/img/mnt_light.svg" width="60%">
-    <img src="https://raw.githubusercontent.com/cda-tum/mnt-bench/main/img/mnt_dark.svg" width="60%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cda-tum/mnt-nanoplacer/main/docs/_static/mnt_light.svg" width="60%">
+    <img src="https://raw.githubusercontent.com/cda-tum/mnt-nanoplacer/main/docs/_static/mnt_dark.svg" width="60%">
   </picture>
 </p>
 
@@ -57,41 +59,26 @@ You can then create the desired layout based on specified parameters (e.g. logic
 from mnt import nanoplacer
 
 if __name__ == "__main__":
-    benchmark = "trindade16"  # fontes18, trindade16, EPFL, TOY, ISCAS85
-    function = "mux21"
-    clocking_scheme = "2DDWave"  # 2DDWave,USE, RES, ESR
-    technology = "QCA"  # QCA, SiDB, Gate-level
-    minimal_layout_dimension = False  # if True, experimentally found minimal layout dimensions, else user specified layout dimensions are chosen
-    layout_width = 3
-    layout_height = 4
-    time_steps = 10000  # number of time steps to train the RL agent.
-    reset_model = True  # if True, reset saved model and train from scratch.
-    verbose = 0  # 0: Only show number of placed gates
-    #              1: print layout after every new best placement
-    #              2: print training metrics
-    #              3: print layout and training metrics
-    optimize = True
-
     nanoplacer.create_layout(
-        benchmark=benchmark,
-        function=function,
-        clocking_scheme=clocking_scheme,
-        technology=technology,
-        minimal_layout_dimension=minimal_layout_dimension,
-        layout_width=layout_width,
-        layout_height=layout_height,
-        time_steps=time_steps,
-        reset_model=reset_model,
-        verbose=verbose,
-        optimize=optimize,
+        benchmark="trindade16",
+        function="mux21",
+        clocking_scheme="2DDWave",
+        technology="QCA",
+        minimal_layout_dimension=False,
+        layout_width=3,
+        layout_height=4,
+        time_steps=10000,
+        reset_model=True,
+        verbose=1,
+        optimize=True,
     )
 ```
 
 or via the command:
 
 ```
-(venv) $ mnt.nanoplacer -h
-usage: mnt.nanoplacer [-h] [-b {fontes18,trindade16,EPFL,TOY,ISCAS85}] [-f FUNCTION] [-c {2DDWave,USE, RES}] [-t {QCA,SiDB, Gate-level}] [-l] [-lw LAYOUT_WIDTH] [-lh LAYOUT_HEIGHT] [-ts TIME_STEPS] [-r] [-v {0,1, 2, 3}]
+(venv) $ mnt.nanoplacer
+usage: mnt.nanoplacer [-h] [-b {fontes18,trindade16,EPFL,TOY,ISCAS85}] [-f FUNCTION] [-c {2DDWave,USE, RES, ESR}] [-t {QCA,SiDB, Gate-level}] [-l] [-lw LAYOUT_WIDTH] [-lh LAYOUT_HEIGHT] [-ts TIME_STEPS] [-r] [-v {0,1, 2, 3}]
 Optional arguments:
   -h, --help                       Show this help message and exit.
   -b, --benchmark                  Benchmark set.
@@ -109,22 +96,24 @@ Optional arguments:
 For example to create the gate-level layout for the mux21 function from trindade16 on the 2DDWave clocking scheme using the best found layout dimensions (by training for a maximum of 10000 timesteps):
 
 ```
-mnt.nanoplacer -b "trindade16" -f "mux21" -c "2DDWave" -t "gate-level" -l True -ts 10000 -v 1
+mnt.nanoplacer -b "trindade16" -f "mux21" -c "2DDWave" -t "gate-level" -l -ts 10000 -v 1
 ```
 
 # Repository Structure
 
 ```
 .
-├── placement_envs/
-│ ├── benchmarks/                       # common benchmark sets
-│ ├── images/                           # generated layouts in .svg format are saved here
-│ ├── models/                           # ppo models
-│ ├── nano_placement_env/           # placement environment
-│ ├── utils/
-│   └── placement_utils/              # placement util functions
-│   └── layout_dimenions/             # predefined layout dimensions for certain functions
-├── tensorboard/                      # tensorboard log directory
+├── docs/
+├── src/
+│ ├── mnt/
+│   └── nanoplacer/
+│     ├── main.py                         # entry point for mnt.bench script
+│     ├── benchmarks/                     # common benchmark sets
+│     ├── placement_envs/
+│     │ └── utils/
+│     │   ├── placement_utils/          # placement util functions
+│     │   └── layout_dimenions/         # predefined layout dimensions for certain functions
+│     └── nano_placement_env.py           # placement environment
 ```
 
 # Monitoring Training
@@ -140,7 +129,6 @@ Install it via
 and run the following command from within the NanoPlaceR directory:
 
 ```console
-(venv) $ cd NanoPlaceR
 (venv) $ tensorboard --logdir="tensorboard/{Insert function name here}"
 ```
 

@@ -1,5 +1,6 @@
 import collections
 import os
+from pathlib import Path
 from time import time
 
 import gymnasium as gym
@@ -253,6 +254,9 @@ class NanoPlacementEnv(gym.Env):
     def save_layout(self):
         """Creates cell layout and saves it as .svg for QCA and .dot for SiDB.
         If technology is set to gate-level, it will be saved as an .fgl file."""
+        if not Path.exists(Path("layouts")):
+            Path.mkdir(Path("layouts"), parents=True)
+
         if self.technology == "QCA":
             try:
                 cell_layout = pyfiction.apply_qca_one_library(self.layout)
@@ -260,7 +264,7 @@ class NanoPlacementEnv(gym.Env):
                 params.simple = len(self.actions) > 200
                 pyfiction.write_qca_layout_svg(
                     cell_layout,
-                    os.path.join("images", f"{self.function}_{self.clocking_scheme}_qca.svg"),
+                    os.path.join("layouts", f"{self.function}_{self.clocking_scheme}_qca.svg"),
                     params,
                 )
             finally:
@@ -268,19 +272,19 @@ class NanoPlacementEnv(gym.Env):
         elif self.technology == "SiDB":
             try:
                 hex_layout = pyfiction.hexagonalization(self.layout)
-                pyfiction.write_dot_layout(hex_layout, os.path.join("images", f"{self.function}_ROW_sidb.dot"))
+                pyfiction.write_dot_layout(hex_layout, os.path.join("layouts", f"{self.function}_ROW_sidb.dot"))
             finally:
                 pass
         elif self.technology == "Gate-level":
             pyfiction.write_fgl_layout(
                 self.layout,
                 os.path.join(
-                    "images",
+                    "layouts",
                     f"{self.function}_ONE_{self.clocking_scheme}_NanoPlaceR_{'Un' if not self.optimize else ''}Opt_UnOrd.fgl",
                 ),
             )
         else:
-            error_message = f"Not a technology: {self.technology}"
+            error_message = f"Not a supported technology: {self.technology}"
             raise Exception(error_message)
 
     def place_node_with_1_input(self, x: int, y: int, signal: int):

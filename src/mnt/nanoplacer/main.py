@@ -11,19 +11,19 @@ from mnt.nanoplacer.placement_envs.utils import layout_dimensions
 
 
 def create_layout(
-    benchmark="trindade16",
-    function="mux21",
-    clocking_scheme="2DDWave",
-    technology="Gate-level",
-    minimal_layout_dimension=True,
-    layout_width=3,
-    layout_height=4,
-    time_steps=10000,
-    reset_model=True,
-    verbose=1,
-    optimize=True,
+    benchmark: str = "trindade16",
+    function: str = "mux21",
+    clocking_scheme: str = "2DDWave",
+    technology: str = "Gate-level",
+    minimal_layout_dimension: bool = True,
+    layout_width: int = 3,
+    layout_height: int = 4,
+    time_steps: int = 10000,
+    reset_model: bool = True,
+    verbose: int = 1,
+    optimize: bool = True,
 ):
-    for folder in ["images", "models", "tensorboard"]:
+    for folder in ["layouts", "models", "tensorboard"]:
         if not Path.exists(Path(folder)):
             Path.mkdir(Path(folder), parents=True)
 
@@ -73,7 +73,6 @@ def create_layout(
         log_interval=1,
         reset_num_timesteps=reset_num_timesteps,
     )
-    # env.plot_placement_times()
 
     model.save(
         os.path.join(
@@ -139,7 +138,7 @@ def start():
         "-l",
         "--minimal_layout_dimension",
         action="store_true",
-        help="If True, experimentally found minimal layout dimensions are used.",
+        help="If True, experimentally found minimal layout dimensions are used (defaults to False).",
     )
     parser.add_argument(
         "-lw",
@@ -166,7 +165,7 @@ def start():
         "-r",
         "--reset_model",
         action="store_true",
-        help="If True, reset saved model and train from scratch.",
+        help="If True, reset saved model and train from scratch (defaults to False).",
     )
     parser.add_argument(
         "-v",
@@ -209,7 +208,7 @@ if __name__ == "__main__":
     layout_height = 4
     time_steps = 10000
     reset_model = True
-    verbose = 0  # 0: Only show number of placed gates
+    verbose = 1  # 0: Only show number of placed gates
     #              1: print layout after every new best placement
     #              2: print training metrics
     #              3: print layout and training metrics
