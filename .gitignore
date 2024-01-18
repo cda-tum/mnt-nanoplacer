@@ -54,3 +54,11 @@ docs/_build/
 
 # Mac specific files
 **/.DS_Store
+
+# Created folders
+layouts
+models
+tensorboard
+tests/layouts
+tests/models
+tests/tensorboard
