@@ -1,3 +1,4 @@
+import argparse
 import os
 from pathlib import Path
 
@@ -10,17 +11,17 @@ from mnt.nanoplacer.placement_envs.utils import layout_dimensions
 
 
 def create_layout(
-    benchmark,
-    function,
-    clocking_scheme,
-    technology,
-    minimal_layout_dimension,
-    layout_width,
-    layout_height,
-    time_steps,
-    reset_model,
-    verbose,
-    optimize,
+    benchmark="trindade16",
+    function="mux21",
+    clocking_scheme="2DDWave",
+    technology="Gate-level",
+    minimal_layout_dimension=True,
+    layout_width=3,
+    layout_height=4,
+    time_steps=10000,
+    reset_model=True,
+    verbose=1,
+    optimize=True,
 ):
     for folder in ["images", "models", "tensorboard"]:
         if not Path.exists(Path(folder)):
@@ -101,12 +102,109 @@ def create_layout(
             env.render()
 
 
+def start():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-b",
+        "--benchmark",
+        type=str,
+        choices=["fontes18", "trindade16", "EPFL", "TOY", "ISCAS85"],
+        default="trindade16",
+        help="Benchmark set.",
+    )
+    parser.add_argument(
+        "-f",
+        "--function",
+        type=str,
+        default="mux21",
+        help="Logic function to generate layout for.",
+    )
+    parser.add_argument(
+        "-c",
+        "--clocking_scheme",
+        type=str,
+        choices=["2DDWave", "USE", "RES", "ESR"],
+        default="2DDWave",
+        help="Underlying clocking scheme.",
+    )
+    parser.add_argument(
+        "-t",
+        "--technology",
+        type=str,
+        choices=["QCA", "SiDB", "Gate-level"],
+        default="Gate-level",
+        help="Underlying technology (QCA, SiDB or technology-independent Gate-level).",
+    )
+    parser.add_argument(
+        "-l",
+        "--minimal_layout_dimension",
+        action="store_true",
+        help="If True, experimentally found minimal layout dimensions are used.",
+    )
+    parser.add_argument(
+        "-lw",
+        "--layout_width",
+        type=int,
+        default=3,
+        help="User defined layout width.",
+    )
+    parser.add_argument(
+        "-lh",
+        "--layout_height",
+        type=int,
+        default=4,
+        help="User defined layout height.",
+    )
+    parser.add_argument(
+        "-ts",
+        "--time_steps",
+        type=int,
+        default=10000,
+        help="Number of time steps to train the RL agent.",
+    )
+    parser.add_argument(
+        "-r",
+        "--reset_model",
+        action="store_true",
+        help="If True, reset saved model and train from scratch.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        type=int,
+        choices=[0, 1, 2, 3],
+        default=1,
+        help="0: No information. 1: Print layout after every new best placement. "
+        "2: Print training metrics. 3: 1 and 2 combined.",
+    )
+    parser.add_argument(
+        "-o",
+        "--optimize",
+        action="store_true",
+        help="If True, layout will be further optimized after placement.",
+    )
+    args = parser.parse_args()
+    create_layout(
+        args.benchmark,
+        args.function,
+        args.clocking_scheme,
+        args.technology,
+        args.minimal_layout_dimension,
+        args.layout_width,
+        args.layout_height,
+        args.time_steps,
+        args.reset_model,
+        args.verbose,
+        args.optimize,
+    )
+
+
 if __name__ == "__main__":
     benchmark = "trindade16"
     function = "mux21"
     clocking_scheme = "2DDWave"
     technology = "QCA"
-    minimal_layout_dimension = True  # if False, user specified layout dimensions are chosen
+    minimal_layout_dimension = False  # if False, user specified layout dimensions are chosen
     layout_width = 3
     layout_height = 4
     time_steps = 10000

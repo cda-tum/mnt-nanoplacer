@@ -45,6 +45,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
 
+[project.scripts]
+"mnt.nanoplacer" = "mnt.nanoplacer.main:start"
+
 [project.urls]
 Homepage = "https://github.com/cda-tum/NanoPlaceR"
 "Bug Tracker" = "https://github.com/cda-tum/NanoPlaceR/issues"
