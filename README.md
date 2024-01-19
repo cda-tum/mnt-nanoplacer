@@ -135,7 +135,7 @@ and run the following command from within the NanoPlaceR directory:
 In case you are using NanoPlaceR in your work, we would be thankful if you referred to it by citing the following publication:
 
 ```bibtex
-@INPROCEEDINGS{hofmann2023nanoplacer,
+@INPROCEEDINGS{hofmann2024nanoplacer,
   author        = {S. Hofmann and M. Walter and L. Servadei and R. Wille},
   title         = {{Thinking Outside the Clock: Physical Design for Field-coupled Nanocomputing with Deep Reinforcement Learning}},
   booktitle     = {{2024 25th International Symposium on Quality Electronic Design (ISQED)}},
