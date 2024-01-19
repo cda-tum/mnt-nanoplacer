@@ -137,9 +137,9 @@ In case you are using NanoPlaceR in your work, we would be thankful if you refer
 ```bibtex
 @INPROCEEDINGS{hofmann2023nanoplacer,
   author        = {S. Hofmann and M. Walter and L. Servadei and R. Wille},
-  title         = {{Late Breaking Results From Hybrid Design Automation for Field-coupled Nanotechnologies}},
-  booktitle     = {{Design Automation Conference (DAC)}},
-  year          = {2023},
+  title         = {{Thinking Outside the Clock: Physical Design for Field-coupled Nanocomputing with Deep Reinforcement Learning}},
+  booktitle     = {{2024 25th International Symposium on Quality Electronic Design (ISQED)}},
+  year          = {2024},
 }
 ```
 
