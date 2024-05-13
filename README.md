@@ -94,7 +94,7 @@ Optional arguments:
 For example to create the gate-level layout for the mux21 function from trindade16 on the 2DDWave clocking scheme using the best found layout dimensions (by training for a maximum of 10000 timesteps):
 
 ```
-mnt.nanoplacer -b "trindade16" -f "mux21" -c "2DDWave" -t "gate-level" -l -ts 10000 -v 1
+mnt.nanoplacer -b "trindade16" -f "mux21" -c "2DDWave" -t "Gate-level" -l -ts 10000 -v 1
 ```
 
 # Repository Structure
