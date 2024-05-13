@@ -500,6 +500,7 @@ class NanoPlacementEnv(gym.Env):
         mask = possible_positions_nodes.flatten(order="F") == 0
         if not any(mask):
             self.placement_possible = False
+            return [True] * len(mask)
         return [mask[i] & mask_occupied[i] for i in range(len(mask))]
 
     def calculate_reward(self, x: int, y: int, placed_node: bool) -> tuple[float, bool]:

@@ -4,7 +4,6 @@ from pathlib import Path
 
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
-from sb3_contrib.common.maskable.utils import get_action_masks
 
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import layout_dimensions
@@ -80,25 +79,6 @@ def create_layout(
             f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
         )
     )
-
-    # reset environment
-    obs, info = env.reset()
-    terminated = False
-
-    while not terminated:
-        # calculate infeasible layout positions
-        action_masks = get_action_masks(env)
-
-        # Predict coordinate for next gate based on the gate to be placed and the action mask
-        action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
-
-        # place gate, route it and receive reward of +1 if successful, 0 else
-        # placement is terminated if no further feasible placement is possible
-        obs, reward, terminated, truncated, info = env.step(action)
-
-        # print current layout
-        if verbose == 1:
-            env.render()
 
 
 def start():
