@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import networkx as nx
+
 from mnt import pyfiction
 
 
@@ -69,7 +70,7 @@ def topological_sort(dg: nx.DiGraph) -> int:
 
 def create_action_list(
     benchmark, function
-) -> tuple[pyfiction.logic_network, dict[int, str], list[int], nx.DiGraph, list[str], list[str]]:
+) -> tuple[pyfiction.technology_network, dict[int, str], list[int], nx.DiGraph, list[str], list[str]]:
     """Create a topological odering of the network and a mapping of node to gate type.
 
     :param benchmark:    Benchmark set
@@ -82,7 +83,7 @@ def create_action_list(
     """
     dir_path = Path(__file__).parent.parent.parent.resolve()
     path = dir_path / "benchmarks" / benchmark / f"{function}.v"
-    network = pyfiction.read_logic_network(str(path))
+    network = pyfiction.read_technology_network(str(path))
 
     pi_names = [network.get_name(pi) for pi in network.pis()]
     po_names = [network.get_output_name(network.po_index(po)) for po in network.pos()]

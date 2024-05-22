@@ -18,14 +18,14 @@ requires-python = "<=3.12"
 dynamic = ["version"]
 
 dependencies = [
-    "networkx>=3.1",
-    "numpy>=1.24.3",
-    "pre-commit>=3.3.3",
-    "setuptools>=65.5.1",
+    "networkx>=3.2.1",
+    "numpy>=1.26.3",
+    "pre-commit>=3.6.0",
+    "setuptools>=68.2.0",
     "sb3_contrib>=2.2.1",
-    "tensorboard>=2.13.0",
+    "tensorboard>=2.15.1",
     "wheel>=0.38.0",
-    "mnt.pyfiction>=0.5.0"
+    "mnt.pyfiction>=0.6.1"
 ]
 
 classifiers = [
@@ -40,13 +40,14 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7.2"]
+test = ["pytest>=8.2.1"]
 coverage = ["mnt.nanoplacer[test]", "pytest-cov[toml]"]
 
 [project.scripts]

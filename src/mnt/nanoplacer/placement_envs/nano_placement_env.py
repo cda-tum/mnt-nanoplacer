@@ -29,7 +29,11 @@ class NanoPlacementEnv(gym.Env):
 
         self.last_pos = None
         self.technology = technology
-        self.clocking_scheme = "2DDWave" if self.technology == "SiDB" else clocking_scheme
+        self.clocking_scheme = (
+            "2DDWave"
+            if (self.technology == "SiDB" or clocking_scheme.upper() == "2DDWAVE")
+            else clocking_scheme.upper()
+        )
 
         self.layout_width = layout_width
         self.layout_height = layout_height
@@ -71,7 +75,7 @@ class NanoPlacementEnv(gym.Env):
         self.verbose = verbose
         self.layout_mask_width = 4
         self.layout_mask_height = 4
-        self.optimize = optimize if self.clocking_scheme == "2DDWave" else False
+        self.optimize = optimize if self.clocking_scheme.upper() == "2DDWAVE" else False
 
     def reset(self, seed: int = None, options: dict = None) -> tuple[int, dict]:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
@@ -257,7 +261,7 @@ class NanoPlacementEnv(gym.Env):
         if not Path.exists(Path("layouts")):
             Path.mkdir(Path("layouts"), parents=True)
 
-        if self.technology == "QCA":
+        if self.technology.lower() == "qca":
             try:
                 cell_layout = pyfiction.apply_qca_one_library(self.layout)
                 params = pyfiction.write_qca_layout_svg_params()
@@ -269,13 +273,13 @@ class NanoPlacementEnv(gym.Env):
                 )
             finally:
                 pass
-        elif self.technology == "SiDB":
+        elif self.technology.lower() == "sidb":
             try:
                 hex_layout = pyfiction.hexagonalization(self.layout)
                 pyfiction.write_dot_layout(hex_layout, os.path.join("layouts", f"{self.function}_ROW_sidb.dot"))
             finally:
                 pass
-        elif self.technology == "Gate-level":
+        elif self.technology.lower() == "gate-level":
             pyfiction.write_fgl_layout(
                 self.layout,
                 os.path.join(
@@ -339,14 +343,17 @@ class NanoPlacementEnv(gym.Env):
         if (
             self.node_to_action[self.actions[self.current_node]] not in ["INPUT", "OUTPUT"]
             and len(preceding_nodes) != 1
-        ) and (self.node_to_action[self.actions[self.current_node]] != "OUTPUT" and self.clocking_scheme == "2DDWave"):
+        ) and (
+            self.node_to_action[self.actions[self.current_node]] != "OUTPUT"
+            and self.clocking_scheme.upper() == "2DDWAVE"
+        ):
             possible_positions_nodes[: self.layout_mask_width, : self.layout_mask_height] = 0
 
         if self.node_to_action[self.actions[self.current_node]] == "INPUT":
-            if self.clocking_scheme == "2DDWave":
+            if self.clocking_scheme.upper() == "2DDWAVE":
                 possible_positions_nodes[0, : self.layout_mask_height] = 0
                 possible_positions_nodes[: self.layout_mask_width, 0] = 0
-            elif self.clocking_scheme in ("USE", "RES", "ESR"):
+            elif self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
                 possible_positions_nodes[0, :] = 0
                 possible_positions_nodes[self.layout_width - 1, :] = 0
                 possible_positions_nodes[:, 0] = 0
@@ -356,12 +363,12 @@ class NanoPlacementEnv(gym.Env):
                 raise Exception(error_message)
 
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
-            if self.clocking_scheme == "2DDWave":
+            if self.clocking_scheme.upper() == "2DDWAVE":
                 node = self.node_dict[preceding_nodes[0]]
                 loc = self.layout.get_tile(node)
                 possible_positions_nodes[self.layout_width - 1, loc.y - 1 : self.layout_mask_height] = 0
                 possible_positions_nodes[loc.x - 1 : self.layout_mask_width, self.layout_height - 1] = 0
-            elif self.clocking_scheme in ("USE", "RES", "ESR"):
+            elif self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
                 possible_positions_nodes[0][:] = 0
                 possible_positions_nodes[self.layout_width - 1, 0] = 0
                 possible_positions_nodes[:, 0] = 0
@@ -374,7 +381,7 @@ class NanoPlacementEnv(gym.Env):
             node = self.node_dict[preceding_nodes[0]]
             loc = self.layout.get_tile(node)
             for zone in self.layout.outgoing_clocked_zones(loc):
-                if self.clocking_scheme == "2DDWave":
+                if self.clocking_scheme.upper() == "2DDWAVE":
                     if (
                         self.layout.is_empty_tile((zone.x, zone.y, 0))
                         and zone.x < self.layout_mask_width
@@ -397,7 +404,7 @@ class NanoPlacementEnv(gym.Env):
                             possible_positions_nodes[second_zone.x][second_zone.y] = 0
 
         elif len(preceding_nodes) == 2:
-            if self.clocking_scheme == "2DDWave":
+            if self.clocking_scheme.upper() == "2DDWAVE":
                 node_1 = self.node_dict[preceding_nodes[0]]
                 loc_1 = self.layout.get_tile(node_1)
                 node_2 = self.node_dict[preceding_nodes[1]]
@@ -440,13 +447,13 @@ class NanoPlacementEnv(gym.Env):
 
                 width = self.layout_width + 1
                 height = self.layout_height + 1
-                if self.clocking_scheme in ("RES", "ESR"):
+                if self.clocking_scheme.upper() in ("RES", "ESR"):
                     if ((self.layout_width + 1) % 4) == 1:
                         width += 1
                     elif ((self.layout_height + 1) % 4) == 2:
                         height += 1
                 self.layout.resize((width - 1, height - 1, 1))
-                if self.clocking_scheme in ("USE", "RES", "ESR"):
+                if self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
                     goals = []
                     if (width % 2 == 0) and (height % 2 == 0):
                         goals.append((0, width - 1))
@@ -468,7 +475,7 @@ class NanoPlacementEnv(gym.Env):
                         if overall:
                             possible = True
                 elif (
-                    self.clocking_scheme == "2DDWave"
+                    self.clocking_scheme.upper() == "2DDWAVE"
                     and possible
                     and (
                         len(
@@ -514,7 +521,7 @@ class NanoPlacementEnv(gym.Env):
         :return:               Reward and termination indicator
         """
         reward = 10000 if self.current_node == len(self.actions) else placed_node
-        if placed_node and self.clocking_scheme == "2DDWave":
+        if placed_node and self.clocking_scheme.upper() == "2DDWAVE":
             reward *= 1 - ((x + y) / (self.layout_mask_width * self.layout_mask_height))
 
         done = bool(self.current_node == len(self.actions) or not self.placement_possible)
