@@ -15,7 +15,10 @@
 NanoPlaceR is a tool for the physical design of FCN circuitry based on Reinforcement Learning.
 It can generate layouts for logic networks up to ~200 gates, while requiring ~50% less area than the state-of-the-art heuristic approach.
 
-Related publication presented at DAC: [paper](https://www.cda.cit.tum.de/files/eda/2023_dac_late_breaking_results_from_hybrid_design_automation_for_field_coupled_nanotechnologies.pdf)
+Related publications: 
+- [DAC23](https://www.cda.cit.tum.de/files/eda/2023_dac_late_breaking_results_from_hybrid_design_automation_for_field_coupled_nanotechnologies.pdf)
+- [ISQD24](https://www.cda.cit.tum.de/files/eda/2024_isqed_thinking_outside_the_clock_physical_design_for_field-coupled_nanocomputing_with_deep_reinforcement_learning.pdf)
+
 
 Inspired by recent developments in the field of machine learning-aided design automation, this tool combines reinforcement learning with efficient path routing algorithms based on established algorithms such as A\* search.
 Masked Proximal Policy Optimization (PPO) is used to learn the placement of logic elements, which is further accelerated by incorporating an action mask computed based on the netlist structure and the last partial placement, ensuring valid and compact solutions.
@@ -89,6 +92,7 @@ Optional arguments:
   -ts, --time_steps                Number of time steps to train the RL agent.
   -r,  --reset_model               If True, reset saved model and train from scratch (defautls to False).
   -v,  --verbosity                 0: No information. 1: Print layout after every new best placement. 2: Print training metrics. 3: 1 and 2 combined.
+  -o,  --optimize                  If True, layout will be further optimized after placement.
 ```
 
 For example to create the gate-level layout for the mux21 function from trindade16 on the 2DDWave clocking scheme using the best found layout dimensions (by training for a maximum of 10000 timesteps):
@@ -105,34 +109,27 @@ mnt.nanoplacer -b "trindade16" -f "mux21" -c "2DDWave" -t "Gate-level" -l -ts 10
 ├── src/
 │ ├── mnt/
 │   └── nanoplacer/
-│     ├── main.py                         # entry point for mnt.bench script
+│     ├── main.py                         # entry point for the mnt.nanoplacer script
 │     ├── benchmarks/                     # common benchmark sets
 │     ├── placement_envs/
 │     │ └── utils/
-│     │   ├── placement_utils/          # placement util functions
-│     │   └── layout_dimenions/         # predefined layout dimensions for certain functions
-│     └── nano_placement_env.py           # placement environment
-```
-
-# Monitoring Training
-
-Training can be monitored using [Tensorboard](https://www.tensorflow.org/tensorboard).
-
-Install it via
-
-```console
-(venv) $ pip install tensorboard
-```
-
-and run the following command from within the NanoPlaceR directory:
-
-```console
-(venv) $ tensorboard --logdir="tensorboard/{Insert function name here}"
+│     │   ├── placement_utils/            # placement util functions
+│     │   └── layout_dimenions/           # predefined layout dimensions for certain functions
+│     └──── nano_placement_env.py           # placement environment
 ```
 
 # References
 
-In case you are using NanoPlaceR in your work, we would be thankful if you referred to it by citing the following publication:
+In case you are using NanoPlaceR in your work, we would be thankful if you referred to it by citing the following publications:
+
+```bibtex
+@INPROCEEDINGS{hofmann2023nanoplacer,
+	author        = {S. Hofmann and M. Walter and L. Servadei and R. Wille},
+	title         = {{Late Breaking Results From Hybrid Design Automation for Field-coupled Nanotechnologies}},
+	booktitle     = {{2023 60th ACM/IEEE Design Automation Conference (DAC)}},
+	year          = {2023},
+}
+```
 
 ```bibtex
 @INPROCEEDINGS{hofmann2024nanoplacer,
