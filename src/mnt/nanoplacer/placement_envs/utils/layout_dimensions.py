@@ -26,7 +26,7 @@ layout_dimensions = {
             "xor5Maj": (30, 45),
             "parity": (48, 48),
         },
-        "iscas85": {
+        "ISCAS85": {
             "c17": (7, 7),
         },
     },
@@ -56,7 +56,7 @@ layout_dimensions = {
             "xor5Maj": (45, 45),
             "parity": (70, 70),
         },
-        "iscas85": {
+        "ISCAS85": {
             "c17": (8, 8),
         },
     },
@@ -86,7 +86,7 @@ layout_dimensions = {
             "xor5Maj": (75, 75),
             "parity": (110, 110),
         },
-        "iscas85": {
+        "ISCAS85": {
             "c17": (10, 10),
         },
     },
