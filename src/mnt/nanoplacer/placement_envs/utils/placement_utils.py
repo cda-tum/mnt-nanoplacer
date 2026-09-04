@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from pathlib import Path
 
 import networkx as nx
@@ -13,9 +14,7 @@ def map_to_multidiscrete(action: int, layout_width: int) -> tuple[int, int]:
 
     :return:               Coordinate on Cartesian grid
     """
-    x = action % layout_width
-    y = int(action / layout_width)
-
+    y, x = divmod(action, layout_width)
     return x, y
 
 
@@ -24,18 +23,15 @@ def map_to_discrete(x: int, y: int, layout_width: int) -> int:
     Takes the coordinate on a Cartesian grid and maps it to a single discrete number.
 
     :param x:               X-coordinate
-    :param y:               Y-ccordinate
+    :param y:               Y-coordinate
     :param layout_width:    Width of the layout
 
     :return:                Discrete representation of the coordinate
     """
-    action = 0
-    action += x
-    action += y * layout_width
-    return action
+    return x + y * layout_width
 
 
-def topological_generations(dg: nx.DiGraph) -> int:
+def topological_generations(dg: nx.DiGraph) -> Iterator[int]:
     """Create a topological ordering of a network in a depth-first way and yields each node.
 
     :param dg:         Logic network (graph)
@@ -46,8 +42,7 @@ def topological_generations(dg: nx.DiGraph) -> int:
     zero_indegree = [v for v, d in dg.in_degree() if d == 0]
 
     while zero_indegree:
-        node = zero_indegree[0]
-        zero_indegree = zero_indegree[1:] if len(zero_indegree) > 1 else []
+        node = zero_indegree.pop(0)
 
         for child in dg.neighbors(node):
             indegree_map[child] -= 1
@@ -57,7 +52,7 @@ def topological_generations(dg: nx.DiGraph) -> int:
         yield node
 
 
-def topological_sort(dg: nx.DiGraph) -> int:
+def topological_sort(dg: nx.DiGraph) -> Iterator[int]:
     """Create a topological ordering of a network in a depth-first way and yields each node.
 
     :param dg:         Logic network
@@ -69,9 +64,9 @@ def topological_sort(dg: nx.DiGraph) -> int:
 
 
 def create_action_list(
-    benchmark, function
+    benchmark: str, function: str
 ) -> tuple[pyfiction.technology_network, dict[int, str], list[int], nx.DiGraph, list[str], list[str]]:
-    """Create a topological odering of the network and a mapping of node to gate type.
+    """Create a topological ordering of the network and a mapping of node to gate type.
 
     :param benchmark:    Benchmark set
     :param function:     Function in the benchmark set
@@ -81,15 +76,12 @@ def create_action_list(
     :return:    actions:           Topological sort of the network nodes
     :return:    dg:                Digraph representation of the logic network
     """
-    dir_path = Path(__file__).parent.parent.parent.resolve()
+    dir_path = Path(__file__).parents[2].resolve()
     path = dir_path / "benchmarks" / benchmark / f"{function}.v"
     network = pyfiction.read_technology_network(str(path))
 
     pi_names = [network.get_name(pi) for pi in network.pis()]
     po_names = [network.get_output_name(network.po_index(po)) for po in network.pos()]
-
-    # mapping_params = pyfiction.and_or_not()
-    # network = pyfiction.technology_mapping(network, mapping_params)
 
     params = pyfiction.fanout_substitution_params()
     params.strategy = pyfiction.substitution_strategy.DEPTH
@@ -144,6 +136,6 @@ def create_action_list(
         elif network.is_buf(action):
             node_to_action[action] = "BUF"
         else:
-            error_message = f"Unknown action: {action}"
-            raise Exception(error_message)
+            msg = f"Unknown action: {action}"
+            raise ValueError(msg)
     return network, node_to_action, actions, dg, pi_names, po_names
