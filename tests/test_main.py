@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -19,13 +19,13 @@ def test_create_layout_starts_and_saves_a_new_model(tmp_path: Path, monkeypatch:
         create_layout(minimal_layout_dimension=False, time_steps=42, reset_model=True)
 
     ppo.assert_called_once_with(
-        ANY,
+        "MlpPolicy",
         env,
         batch_size=512,
         verbose=0,
         gamma=0.995,
         learning_rate=0.001,
-        tensorboard_log=str(Path("tensorboard") / "mux21"),
+        tensorboard_log=str(Path("tensorboard") / "Gate-level_trindade16_mux21_2DDWave_3x4"),
     )
     model.learn.assert_called_once_with(total_timesteps=42, log_interval=1, reset_num_timesteps=True)
     model.save.assert_called_once_with(Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip"))
@@ -64,6 +64,20 @@ def test_create_layout_uses_iscas85_dimensions(tmp_path: Path, monkeypatch: pyte
 
     assert env.call_args.kwargs["layout_width"] == 7
     assert env.call_args.kwargs["layout_height"] == 7
+
+
+def test_create_layout_uses_2ddwave_dimensions_for_sidb(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
+        patch("mnt.nanoplacer.main.MaskablePPO"),
+    ):
+        create_layout(technology="SiDB", clocking_scheme="USE", time_steps=0)
+
+    assert env.call_args.kwargs["clocking_scheme"] == "2DDWave"
+    assert env.call_args.kwargs["layout_width"] == 4
+    assert env.call_args.kwargs["layout_height"] == 3
 
 
 def test_create_layout_rejects_unknown_minimal_dimensions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

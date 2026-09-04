@@ -1,4 +1,5 @@
 import networkx as nx
+import pytest
 
 from mnt.nanoplacer.placement_envs.utils.placement_utils import (
     create_action_list,
@@ -47,3 +48,8 @@ def test_create_action_list() -> None:
     assert list(graph.edges()) == [(2, 7), (3, 8), (4, 5), (5, 6), (5, 8), (6, 7), (7, 9), (8, 9), (9, 10)]
     assert pi_names == ["in0", "in1", "in2"]
     assert po_names == ["out"]
+
+
+def test_create_action_list_rejects_unknown_function() -> None:
+    with pytest.raises(ValueError, match="EPFL/mux21 does not exist"):
+        create_action_list("EPFL", "mux21")

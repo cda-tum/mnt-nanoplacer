@@ -2,44 +2,45 @@ name-template: "NanoPlaceR $RESOLVED_VERSION Release"
 tag-template: "v$RESOLVED_VERSION"
 categories:
   - title: "🚀 Features and Enhancements"
-    labels:
-      - "feature"
-      - "usability"
+    when:
+      labels:
+        - "feature"
+        - "usability"
   - title: "🐛 Bug Fixes"
-    labels:
-      - "bug"
+    when:
+      labels:
+        - "bug"
   - title: "📄 Documentation"
-    labels:
-      - "documentation"
+    when:
+      labels:
+        - "documentation"
   - title: "🤖 CI"
-    labels:
-      - "continuous integration"
+    when:
+      labels:
+        - "continuous integration"
   - title: "📦 Packaging"
-    labels:
-      - "packaging"
+    when:
+      labels:
+        - "packaging"
   - title: "⬆️ Dependencies"
     collapse-after: 5
-    labels:
-      - "dependencies"
-      - "submodules"
-      - "github_actions"
+    when:
+      labels:
+        - "dependencies"
+        - "submodules"
+        - "github_actions"
+  - type: version-resolver
+    semver-increment: major
+    when:
+      label: "major"
+  - type: version-resolver
+    semver-increment: minor
+    when:
+      label: "minor"
+  - type: version-resolver
+    semver-increment: patch
 change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 change-title-escapes: '\<*_&'
-version-resolver:
-  major:
-    labels:
-      - "major"
-  minor:
-    labels:
-      - "minor"
-  patch:
-    labels:
-      - "patch"
-  default: patch
-autolabeler:
-  - label: "dependencies"
-    title:
-      - "/update pre-commit hooks/i"
 
 template: |
   ## What Changed 👀

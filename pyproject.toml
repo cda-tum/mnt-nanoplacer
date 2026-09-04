@@ -15,15 +15,15 @@ authors = [
 keywords = ["FCN", "physical design"]
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dynamic = ["version"]
 
 dependencies = [
-    "gymnasium>=0.28.1",
+    "gymnasium>=0.29.1",
     "mnt.pyfiction>=0.8.0",
     "networkx>=3.2.1",
     "numpy>=1.26.3",
-    "sb3-contrib>=2.2.1",
+    "sb3-contrib>=2.8.0",
     "tensorboard>=2.15.1",
 ]
 
@@ -34,10 +34,10 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
@@ -66,7 +66,7 @@ Research = "https://www.cda.cit.tum.de/research/fcn/"
 line-length = 120
 namespace-packages = ["src/mnt"]
 src = ["src"]
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
