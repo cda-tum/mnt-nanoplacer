@@ -18,7 +18,7 @@ NanoPlaceR is an open-source physical-design tool for field-coupled nanocomputin
 
 ## Installation
 
-NanoPlaceR requires Python 3.10 or newer and `mnt.pyfiction` 0.8 or newer. The CI suite covers Python 3.10 and 3.13.
+NanoPlaceR supports Python 3.11 through 3.14 and requires `mnt.pyfiction` 0.8 or newer. The CI suite covers both ends of that range.
 
 ```console
 python -m venv .venv

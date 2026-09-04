@@ -1,3 +1,4 @@
+from collections import deque
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -39,15 +40,15 @@ def topological_generations(dg: nx.DiGraph) -> Iterator[int]:
     :return:           Current node from the network
     """
     indegree_map = {v: d for v, d in dg.in_degree() if d > 0}
-    zero_indegree = [v for v, d in dg.in_degree() if d == 0]
+    zero_indegree = deque(v for v, d in dg.in_degree() if d == 0)
 
     while zero_indegree:
-        node = zero_indegree.pop(0)
+        node = zero_indegree.popleft()
 
         for child in dg.neighbors(node):
             indegree_map[child] -= 1
             if indegree_map[child] == 0:
-                zero_indegree.insert(0, child)
+                zero_indegree.appendleft(child)
                 del indegree_map[child]
         yield node
 
@@ -78,6 +79,9 @@ def create_action_list(
     """
     dir_path = Path(__file__).parents[2].resolve()
     path = dir_path / "benchmarks" / benchmark / f"{function}.v"
+    if not path.is_file():
+        msg = f"Benchmark function {benchmark}/{function} does not exist"
+        raise ValueError(msg)
     network = pyfiction.read_technology_network(str(path))
 
     pi_names = [network.get_name(pi) for pi in network.pis()]
@@ -86,18 +90,19 @@ def create_action_list(
     params = pyfiction.fanout_substitution_params()
     params.strategy = pyfiction.substitution_strategy.DEPTH
     network = pyfiction.fanout_substitution(network, params)
+    po_nodes = set(network.pos())
 
     dg = nx.DiGraph()
 
     # add nodes
     dg.add_nodes_from(network.pis())
     for gate in network.gates():
-        if gate not in network.pos():
+        if gate not in po_nodes:
             dg.add_node(gate)
 
     # add edges
     for x in network.gates():
-        if x not in network.pos():
+        if x not in po_nodes:
             for pre in network.fanins(x):
                 dg.add_edge(pre, x)
 

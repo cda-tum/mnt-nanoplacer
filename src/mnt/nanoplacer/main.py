@@ -2,7 +2,6 @@ import argparse
 from pathlib import Path
 
 from sb3_contrib import MaskablePPO
-from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import layout_dimensions
@@ -21,20 +20,23 @@ def create_layout(
     verbose: int = 1,
     optimize: bool = True,
 ) -> None:
+    effective_clocking_scheme = "2DDWave" if technology.lower() == "sidb" else clocking_scheme
+
     for folder in (Path("layouts"), Path("models"), Path("tensorboard")):
         folder.mkdir(parents=True, exist_ok=True)
 
     if minimal_layout_dimension:
-        dimensions = layout_dimensions.get(clocking_scheme, {}).get(benchmark, {}).get(function)
+        dimensions = layout_dimensions.get(effective_clocking_scheme, {}).get(benchmark, {}).get(function)
         if dimensions is None:
             msg = (
-                f"No predefined layout dimensions for {benchmark}/{function} with the {clocking_scheme} clocking scheme"
+                f"No predefined layout dimensions for {benchmark}/{function} with the "
+                f"{effective_clocking_scheme} clocking scheme"
             )
             raise ValueError(msg)
         layout_width, layout_height = dimensions
 
     env = NanoPlacementEnv(
-        clocking_scheme=clocking_scheme,
+        clocking_scheme=effective_clocking_scheme,
         technology=technology,
         layout_width=layout_width,
         layout_height=layout_height,
@@ -46,17 +48,20 @@ def create_layout(
 
     model_path = Path("models") / (
         f"ppo_{technology}_{benchmark}_{function}_"
-        f"{'ROW' if technology == 'SiDB' else clocking_scheme}_{layout_width}x{layout_height}.zip"
+        f"{'ROW' if technology.lower() == 'sidb' else effective_clocking_scheme}_{layout_width}x{layout_height}.zip"
     )
     if reset_model or not model_path.exists():
         model = MaskablePPO(
-            MaskableActorCriticPolicy,
+            "MlpPolicy",
             env,
             batch_size=512,
             verbose=1 if verbose in (2, 3) else 0,
             gamma=0.995,
             learning_rate=0.001,
-            tensorboard_log=str(Path("tensorboard") / function),
+            tensorboard_log=str(
+                Path("tensorboard")
+                / f"{technology}_{benchmark}_{function}_{effective_clocking_scheme}_{layout_width}x{layout_height}"
+            ),
         )
         reset_num_timesteps = True
     else:

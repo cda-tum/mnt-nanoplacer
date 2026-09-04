@@ -1,4 +1,3 @@
-from collections import defaultdict
 from pathlib import Path
 from time import time
 
@@ -27,11 +26,18 @@ class NanoPlacementEnv(gym.Env):
         """Constructor."""
         super().__init__()
 
+        if technology.lower() not in {"qca", "sidb", "gate-level"}:
+            msg = f"Not a supported technology: {technology}"
+            raise ValueError(msg)
+        if layout_width <= 0 or layout_height <= 0:
+            msg = "Layout dimensions must be positive"
+            raise ValueError(msg)
+
         self.last_pos = None
         self.technology = technology
         self.clocking_scheme = (
             "2DDWave"
-            if (self.technology == "SiDB" or clocking_scheme.upper() == "2DDWAVE")
+            if (self.technology.lower() == "sidb" or clocking_scheme.upper() == "2DDWAVE")
             else clocking_scheme.upper()
         )
 
@@ -55,7 +61,7 @@ class NanoPlacementEnv(gym.Env):
             self.pi_names,
             self.po_names,
         ) = create_action_list(self.benchmark, self.function)
-        self.observation_space = gym.spaces.Discrete(max(self.actions))
+        self.observation_space = gym.spaces.Discrete(len(self.actions) + 1)
 
         self.action_space = gym.spaces.Discrete(self.layout_width * self.layout_height)
 
@@ -64,14 +70,14 @@ class NanoPlacementEnv(gym.Env):
         self.current_po = 0
 
         self.placement_possible = True
-        self.node_dict = defaultdict(int)
+        self.node_dict: dict[int, int] = {}
         self.max_placed_nodes = 0
         self.current_tries = 0
         self.max_tries = 0
+        self.tried_positions: set[tuple[int, int]] = set()
         self.start = time()
         self.placement_times = []
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
-        self.gates = np.zeros([self.layout_width, self.layout_height], dtype=int)
         self.verbose = verbose
         self.layout_mask_width = 4
         self.layout_mask_height = 4
@@ -97,14 +103,14 @@ class NanoPlacementEnv(gym.Env):
         self.current_po = 0
         self.current_tries = 0
         self.placement_possible = True
-        self.node_dict = defaultdict(int)
+        self.node_dict = {}
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         observation = self.current_node
 
         self.last_pos = None
         self.max_tries = 0
-        self.gates = np.zeros([self.layout_width, self.layout_height], dtype=int)
+        self.tried_positions.clear()
         self.layout_mask_width = 4
         self.layout_mask_height = 4
 
@@ -121,6 +127,10 @@ class NanoPlacementEnv(gym.Env):
 
         :return:          Observation, reward, termination, truncation, and info
         """
+        if not self.action_space.contains(action):
+            msg = f"Action {action} is outside the action space"
+            raise ValueError(msg)
+
         x, y = map_to_multidiscrete(action, self.layout_width)
 
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
@@ -141,6 +151,7 @@ class NanoPlacementEnv(gym.Env):
             ]:
                 if self.current_tries == 0:
                     self.max_tries = sum(self.action_masks())
+                self.tried_positions.add((x, y))
 
                 layout_node_1 = self.node_dict[preceding_nodes[0]]
                 layout_tile_1 = self.layout.get_tile(layout_node_1)
@@ -195,6 +206,7 @@ class NanoPlacementEnv(gym.Env):
             ]:
                 if self.current_tries == 0:
                     self.max_tries = sum(self.action_masks())
+                self.tried_positions.add((x, y))
 
                 layout_node = self.node_dict[preceding_nodes[0]]
                 layout_tile = self.layout.get_tile(layout_node)
@@ -237,8 +249,8 @@ class NanoPlacementEnv(gym.Env):
 
             if placed_node:
                 self.current_node += 1
+                self.tried_positions.clear()
                 self.occupied_tiles[x][y] = 1
-                self.gates[x][y] = 1
                 self.layout.obstruct_coordinate((x, y, 0))
                 self.layout.obstruct_coordinate((x, y, 1))
 
@@ -272,7 +284,7 @@ class NanoPlacementEnv(gym.Env):
         elif self.technology.lower() == "gate-level":
             path = output_dir / (
                 f"{self.function}_ONE_{self.clocking_scheme}_NanoPlaceR_"
-                f"{'Un' if not self.optimize else ''}Opt_UnOrd.fgl"
+                f"{'Un' if not self.optimize else ''}Opt_UnOrd_area.fgl"
             )
             pyfiction.write_fgl_layout(
                 self.layout,
@@ -328,6 +340,9 @@ class NanoPlacementEnv(gym.Env):
         Additionally, checks termination criteria to stop current placement.
 
         :return:    Action masks"""
+        if self.current_node >= len(self.actions):
+            return [True] * self.action_space.n
+
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
         possible_positions_nodes = np.ones([self.layout_width, self.layout_height], dtype=int)
 
@@ -363,7 +378,7 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes[loc.x - 1 : self.layout_mask_width, self.layout_height - 1] = 0
             elif self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
                 possible_positions_nodes[0, :] = 0
-                possible_positions_nodes[self.layout_width - 1, 0] = 0
+                possible_positions_nodes[self.layout_width - 1, :] = 0
                 possible_positions_nodes[:, 0] = 0
                 possible_positions_nodes[:, self.layout_height - 1] = 0
             else:
@@ -448,7 +463,7 @@ class NanoPlacementEnv(gym.Env):
                 if self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
                     goals = []
                     if (width % 2 == 0) and (height % 2 == 0):
-                        goals.append((0, width - 1))
+                        goals.append((0, height - 1))
                     elif (width % 2 == 1) and (height % 2 == 1):
                         goals.append((width - 1, 0))
                     elif (width % 2 == 0) and (height % 2 == 1):
@@ -459,14 +474,7 @@ class NanoPlacementEnv(gym.Env):
                     else:
                         msg = "Unable to determine a routing goal"
                         raise ValueError(msg)
-                    for goal in goals:
-                        overall = False
-                        if len(pyfiction.a_star(self.layout, tile, goal, params)) == 0:
-                            possible = False
-                        else:
-                            overall = True
-                        if overall:
-                            possible = True
+                    possible = any(pyfiction.a_star(self.layout, tile, goal, params) for goal in goals)
                 elif (
                     self.clocking_scheme.upper() == "2DDWAVE"
                     and possible
@@ -496,12 +504,14 @@ class NanoPlacementEnv(gym.Env):
 
                 if not possible:
                     self.placement_possible = False
-        mask_occupied = self.occupied_tiles.flatten(order="F") == 0
-        mask = possible_positions_nodes.flatten(order="F") == 0
+        mask = (possible_positions_nodes == 0) & (self.occupied_tiles == 0)
+        for tried_position in self.tried_positions:
+            mask[tried_position] = False
+        mask = mask.flatten(order="F")
         if not mask.any():
             self.placement_possible = False
             return [True] * len(mask)
-        return (mask & mask_occupied).tolist()
+        return mask.tolist()
 
     def calculate_reward(self, x: int, y: int, placed_node: bool) -> tuple[float, bool]:
         """Calculate reward based on whether a node was placed or not.
@@ -543,8 +553,5 @@ class NanoPlacementEnv(gym.Env):
 
         return float(reward), done
 
-    def render(self, mode: str = "human") -> None:
-        """Render current placement (not implemented).
-
-        :param mode:    Render mode
-        """
+    def render(self) -> None:
+        """Render current placement (not implemented)."""
