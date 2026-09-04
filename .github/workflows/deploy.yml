@@ -71,7 +71,7 @@ jobs:
       id-token: write
     needs: [build_wheel, build_sdist]
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: artifact
           path: dist
