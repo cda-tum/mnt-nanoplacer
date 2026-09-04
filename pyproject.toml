@@ -1,7 +1,7 @@
 [build-system]
 requires = [
-    "setuptools>=65.5.1",
-    "setuptools_scm[toml]>=7"
+    "setuptools>=77.0.3",
+    "setuptools-scm>=8.1",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -12,35 +12,32 @@ readme = "README.md"
 authors = [
     { name = "Simon Hofmann", email = "simon.t.hofmann@tum.de" },
 ]
-keywords = ["FCN",  "physical design"]
-license = { file = "LICENSE" }
-requires-python =  "<3.13"
+keywords = ["FCN", "physical design"]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
 dynamic = ["version"]
 
 dependencies = [
+    "gymnasium>=0.28.1",
+    "mnt.pyfiction>=0.8.0",
     "networkx>=3.2.1",
     "numpy>=1.26.3",
-    "pre-commit>=3.6.0",
-    "setuptools>=68.2.0",
-    "sb3_contrib>=2.2.1",
+    "sb3-contrib>=2.2.1",
     "tensorboard>=2.15.1",
-    "wheel>=0.38.0",
-    "mnt.pyfiction>=0.6.1"
 ]
 
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
@@ -48,7 +45,7 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["pytest>=8.2.1"]
-coverage = ["mnt.nanoplacer[test]", "pytest-cov[toml]"]
+coverage = ["mnt.nanoplacer[test]", "pytest-cov"]
 
 [project.scripts]
 "mnt.nanoplacer" = "mnt.nanoplacer.main:start"
@@ -59,16 +56,23 @@ Homepage = "https://github.com/cda-tum/NanoPlaceR"
 Discussions = "https://github.com/cda-tum/NanoPlaceR/discussions"
 Research = "https://www.cda.cit.tum.de/research/fcn/"
 
+# ponytail: Editable installs need mnt.pyfiction to make its regular `mnt` package extensible; wheels merge safely.
+[tool.setuptools.package-data]
+"mnt.nanoplacer" = ["benchmarks/*/*.v"]
+
 [tool.setuptools_scm]
 
-[tool.black]
-line-length = 120
-
 [tool.ruff]
+line-length = 120
+namespace-packages = ["src/mnt"]
+src = ["src"]
+target-version = "py310"
+
+[tool.ruff.lint]
 select = [
     "E", "F", "W", # flake8
     "A",           # flake8-builtins
-    "B",  "B904",  # flake8-bugbear
+    "B",           # flake8-bugbear
     "I",           # isort
     "ARG",         # flake8-unused-arguments
     "C4",          # flake8-comprehensions
@@ -90,58 +94,20 @@ select = [
     "YTT",         # flake8-2020
 ]
 ignore = [
-    "ANN101",  # Missing type annotation for self in method
-    "ANN102",  # Missing type annotation for cls in classmethod
-    "E501",    # Line too long (Black is enough)
+    "E501",    # Line too long (Ruff's formatter is enough)
+    "ISC001",  # Conflicts with Ruff's formatter
     "PLR2004", # Magic values
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments
     "PLR0915", # Too many statements
-    "PTH118", # `os.path.join()` should be replaced by `Path` with `/` operator
+    "PLR0917", # Too many positional arguments
 ]
 
-# Exclude a variety of commonly ignored directories.
-exclude = [
-    "__init__.py",
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".hg",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv",
-    ".svg"
-]
-
-line-length = 120
-
-[tool.mypy]
-mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
-files = ["src", "tests", "setup.py"]
-python_version = "3.9"
-strict = true
-show_error_codes = true
-enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
-warn_unreachable = true
-explicit_package_bases = true
-pretty = true
-
-[[tool.mypy.overrides]]
-module = ["networkx.*",  "numpy.*", "matplotlib.*", "gym.*", "tensorboard.*", "torch.*", "stable_baselines3"]
-ignore_missing_imports = true
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+testpaths = ["tests"]
 
 [tool.codespell]
-skip = 'README.md,*svg'
+ignore-words-list = "Wille"
+skip = "*.svg"
 quiet-level = 3

@@ -1,5 +1,4 @@
-import collections
-import os
+from collections import defaultdict
 from pathlib import Path
 from time import time
 
@@ -12,7 +11,7 @@ from mnt.nanoplacer.placement_envs.utils import create_action_list, map_to_multi
 
 class NanoPlacementEnv(gym.Env):
     """Environment used by the RL agent to place gates on the layout and route them via A*.
-    Subclass of the gym Environment and reimplements all base functions."""
+    Subclass of the Gymnasium environment and reimplements all base functions."""
 
     def __init__(
         self,
@@ -24,8 +23,9 @@ class NanoPlacementEnv(gym.Env):
         function: str = "mux21",
         verbose: int = 1,
         optimize: bool = True,
-    ):
+    ) -> None:
         """Constructor."""
+        super().__init__()
 
         self.last_pos = None
         self.technology = technology
@@ -64,7 +64,7 @@ class NanoPlacementEnv(gym.Env):
         self.current_po = 0
 
         self.placement_possible = True
-        self.node_dict = collections.defaultdict(int)
+        self.node_dict = defaultdict(int)
         self.max_placed_nodes = 0
         self.current_tries = 0
         self.max_tries = 0
@@ -77,13 +77,14 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask_height = 4
         self.optimize = optimize if self.clocking_scheme.upper() == "2DDWAVE" else False
 
-    def reset(self, seed: int = None, options: dict = None) -> tuple[int, dict]:  # noqa: ARG002
+    def reset(self, seed: int | None = None, options: dict[str, object] | None = None) -> tuple[int, dict[str, object]]:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
 
-        :param seed:       Sets random seed (not implemented)
+        :param seed:       Sets the environment's random seed
         :param options:    Additional options (not implemented)
 
         :return:           Current observation (node to be placed next)"""
+        super().reset(seed=seed)
         self.layout = pyfiction.cartesian_obstruction_layout(
             pyfiction.cartesian_gate_layout(
                 (self.layout_width - 1, self.layout_height - 1, 1),
@@ -96,13 +97,12 @@ class NanoPlacementEnv(gym.Env):
         self.current_po = 0
         self.current_tries = 0
         self.placement_possible = True
-        self.node_dict = collections.defaultdict(int)
+        self.node_dict = defaultdict(int)
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         observation = self.current_node
 
         self.last_pos = None
-        self.current_tries = 0
         self.max_tries = 0
         self.gates = np.zeros([self.layout_width, self.layout_height], dtype=int)
         self.layout_mask_width = 4
@@ -110,7 +110,7 @@ class NanoPlacementEnv(gym.Env):
 
         return observation, {}
 
-    def step(self, action: int) -> tuple[int, float, bool, bool, dict]:
+    def step(self, action: int) -> tuple[int, float, bool, bool, dict[str, object]]:
         """Taking a step in the environment includes:
             - placing the gate
             - try to route it with it(s) predecessor(s)
@@ -119,22 +119,20 @@ class NanoPlacementEnv(gym.Env):
 
         :param action:    Discrete action output by the policy network
 
-        :return           observation, reward, done, info
+        :return:          Observation, reward, termination, truncation, and info
         """
-        action = map_to_multidiscrete(action, self.layout_width)
-        x = action[0]
-        y = action[1]
+        x, y = map_to_multidiscrete(action, self.layout_width)
 
         preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
 
         if not self.placement_possible or not self.layout.is_empty_tile((x, y)):
             done = True
-            reward = 0
+            reward = 0.0
         else:
-            placed_node = 0
+            placed_node = False
             if self.node_to_action[self.actions[self.current_node]] == "INPUT":
-                self.layout.create_pi(f"{self.pi_names[self.current_pi]}", (x, y))
-                placed_node = 1
+                self.layout.create_pi(self.pi_names[self.current_pi], (x, y))
+                placed_node = True
                 self.current_pi += 1
             elif self.node_to_action[self.actions[self.current_node]] in [
                 "AND",
@@ -170,7 +168,7 @@ class NanoPlacementEnv(gym.Env):
                     if len(path_node_2) != 0:
                         for el in path_node_2:
                             self.layout.obstruct_coordinate(el)
-                        placed_node = 1
+                        placed_node = True
                         self.current_tries = 0
                         pyfiction.route_path(self.layout, path_node_1)
                         pyfiction.route_path(self.layout, path_node_2)
@@ -218,7 +216,7 @@ class NanoPlacementEnv(gym.Env):
                     self.current_tries += 1
                 else:
                     pyfiction.route_path(self.layout, path)
-                    placed_node = 1
+                    placed_node = True
                     if self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
                         self.current_po += 1
                     self.current_tries = 0
@@ -232,8 +230,8 @@ class NanoPlacementEnv(gym.Env):
                 if self.current_tries == self.max_tries:
                     self.placement_possible = False
             else:
-                error_message = f"Not a valid node: {self.node_to_action[self.actions[self.current_node]]}"
-                raise Exception(error_message)
+                msg = f"Not a valid node: {self.node_to_action[self.actions[self.current_node]]}"
+                raise ValueError(msg)
 
             self.node_dict[self.actions[self.current_node]] = self.layout.get_node((x, y))
 
@@ -255,43 +253,36 @@ class NanoPlacementEnv(gym.Env):
         info = {}
         return observation, reward, done, False, info
 
-    def save_layout(self):
+    def save_layout(self) -> None:
         """Creates cell layout and saves it as .svg for QCA and .dot for SiDB.
         If technology is set to gate-level, it will be saved as an .fgl file."""
-        if not Path.exists(Path("layouts")):
-            Path.mkdir(Path("layouts"), parents=True)
+        output_dir = Path("layouts")
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         if self.technology.lower() == "qca":
-            try:
-                cell_layout = pyfiction.apply_qca_one_library(self.layout)
-                params = pyfiction.write_qca_layout_svg_params()
-                params.simple = len(self.actions) > 200
-                pyfiction.write_qca_layout_svg(
-                    cell_layout,
-                    os.path.join("layouts", f"{self.function}_{self.clocking_scheme}_qca.svg"),
-                    params,
-                )
-            finally:
-                pass
+            cell_layout = pyfiction.apply_qca_one_library(self.layout)
+            params = pyfiction.write_qca_layout_svg_params()
+            params.simple = len(self.actions) > 200
+            path = output_dir / f"{self.function}_{self.clocking_scheme}_qca.svg"
+            pyfiction.write_qca_layout_svg(cell_layout, str(path), params)
         elif self.technology.lower() == "sidb":
-            try:
-                hex_layout = pyfiction.hexagonalization(self.layout)
-                pyfiction.write_dot_layout(hex_layout, os.path.join("layouts", f"{self.function}_ROW_sidb.dot"))
-            finally:
-                pass
+            hex_layout = pyfiction.hexagonalization(self.layout)
+            path = output_dir / f"{self.function}_ROW_sidb.dot"
+            pyfiction.write_dot_layout(hex_layout, str(path))
         elif self.technology.lower() == "gate-level":
+            path = output_dir / (
+                f"{self.function}_ONE_{self.clocking_scheme}_NanoPlaceR_"
+                f"{'Un' if not self.optimize else ''}Opt_UnOrd.fgl"
+            )
             pyfiction.write_fgl_layout(
                 self.layout,
-                os.path.join(
-                    "layouts",
-                    f"{self.function}_ONE_{self.clocking_scheme}_NanoPlaceR_{'Un' if not self.optimize else ''}Opt_UnOrd.fgl",
-                ),
+                str(path),
             )
         else:
-            error_message = f"Not a supported technology: {self.technology}"
-            raise Exception(error_message)
+            msg = f"Not a supported technology: {self.technology}"
+            raise ValueError(msg)
 
-    def place_node_with_1_input(self, x: int, y: int, signal: int):
+    def place_node_with_1_input(self, x: int, y: int, signal: int) -> None:
         """Place gate with a single input on a Cartesian grid."""
         if self.node_to_action[self.actions[self.current_node]] == "INV":
             self.layout.create_not(signal, (x, y))
@@ -300,13 +291,14 @@ class NanoPlacementEnv(gym.Env):
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             self.layout.create_po(
                 signal,
-                f"{self.po_names[self.current_po]}",
+                self.po_names[self.current_po],
                 (x, y),
             )
         else:
-            raise Exception
+            msg = "Current node does not have exactly one input"
+            raise ValueError(msg)
 
-    def place_node_with_2_inputs(self, x: int, y: int, signal_1: int, signal_2: int):
+    def place_node_with_2_inputs(self, x: int, y: int, signal_1: int, signal_2: int) -> None:
         """Place gate with two inputs on a Cartesian grid."""
         if self.node_to_action[self.actions[self.current_node]] == "AND":
             self.layout.create_and(
@@ -328,9 +320,10 @@ class NanoPlacementEnv(gym.Env):
                 (x, y),
             )
         else:
-            raise Exception
+            msg = "Current node does not have exactly two inputs"
+            raise ValueError(msg)
 
-    def action_masks(self) -> list[np.matrix]:
+    def action_masks(self) -> list[bool]:
         """Calculate action mask based on current partial placement.
         Additionally, checks termination criteria to stop current placement.
 
@@ -359,8 +352,8 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes[:, 0] = 0
                 possible_positions_nodes[:, self.layout_height - 1] = 0
             else:
-                error_message = f"Unsupported clocking scheme: {self.clocking_scheme}"
-                raise Exception(error_message)
+                msg = f"Unsupported clocking scheme: {self.clocking_scheme}"
+                raise ValueError(msg)
 
         elif self.node_to_action[self.actions[self.current_node]] == "OUTPUT":
             if self.clocking_scheme.upper() == "2DDWAVE":
@@ -369,13 +362,13 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes[self.layout_width - 1, loc.y - 1 : self.layout_mask_height] = 0
                 possible_positions_nodes[loc.x - 1 : self.layout_mask_width, self.layout_height - 1] = 0
             elif self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
-                possible_positions_nodes[0][:] = 0
+                possible_positions_nodes[0, :] = 0
                 possible_positions_nodes[self.layout_width - 1, 0] = 0
                 possible_positions_nodes[:, 0] = 0
                 possible_positions_nodes[:, self.layout_height - 1] = 0
             else:
-                error_message = f"Unsupported clocking scheme: {self.clocking_scheme}"
-                raise Exception(error_message)
+                msg = f"Unsupported clocking scheme: {self.clocking_scheme}"
+                raise ValueError(msg)
 
         elif len(preceding_nodes) == 1 and self.node_to_action[self.actions[self.current_node]] != "OUTPUT":
             node = self.node_dict[preceding_nodes[0]]
@@ -391,15 +384,15 @@ class NanoPlacementEnv(gym.Env):
                 else:
                     if (
                         self.layout.is_empty_tile((zone.x, zone.y, 0))
-                        and zone.x in range(0, self.layout_width)
-                        and zone.y in range(0, self.layout_height)
+                        and 0 <= zone.x < self.layout_width
+                        and 0 <= zone.y < self.layout_height
                     ):
                         possible_positions_nodes[zone.x][zone.y] = 0
                     for second_zone in self.layout.outgoing_clocked_zones((zone.x, zone.y, 0)):
                         if (
                             self.layout.is_empty_tile((second_zone.x, second_zone.y, 0))
-                            and second_zone.x in range(0, self.layout_width)
-                            and second_zone.y in range(0, self.layout_height)
+                            and 0 <= second_zone.x < self.layout_width
+                            and 0 <= second_zone.y < self.layout_height
                         ):
                             possible_positions_nodes[second_zone.x][second_zone.y] = 0
 
@@ -423,9 +416,8 @@ class NanoPlacementEnv(gym.Env):
         for node in self.node_dict:
             if (
                 not self.layout.is_po_tile(self.layout.get_tile(self.node_dict[node]))
-                and (self.layout.fanout_size(self.node_dict[node]) == 0)
-                or (self.layout.fanout_size(self.node_dict[node]) == 1 and self.network.is_fanout(node))
-            ):
+                and self.layout.fanout_size(self.node_dict[node]) == 0
+            ) or (self.layout.fanout_size(self.node_dict[node]) == 1 and self.network.is_fanout(node)):
                 possible = False
                 tile = self.layout.get_tile(self.node_dict[node])
                 for zone in self.layout.outgoing_clocked_zones(tile):
@@ -465,7 +457,8 @@ class NanoPlacementEnv(gym.Env):
                         goals.append((width - 1, 0))
                         goals.append((0, height - 1))
                     else:
-                        raise Exception
+                        msg = "Unable to determine a routing goal"
+                        raise ValueError(msg)
                     for goal in goals:
                         overall = False
                         if len(pyfiction.a_star(self.layout, tile, goal, params)) == 0:
@@ -505,10 +498,10 @@ class NanoPlacementEnv(gym.Env):
                     self.placement_possible = False
         mask_occupied = self.occupied_tiles.flatten(order="F") == 0
         mask = possible_positions_nodes.flatten(order="F") == 0
-        if not any(mask):
+        if not mask.any():
             self.placement_possible = False
             return [True] * len(mask)
-        return [mask[i] & mask_occupied[i] for i in range(len(mask))]
+        return (mask & mask_occupied).tolist()
 
     def calculate_reward(self, x: int, y: int, placed_node: bool) -> tuple[float, bool]:
         """Calculate reward based on whether a node was placed or not.
@@ -520,32 +513,37 @@ class NanoPlacementEnv(gym.Env):
 
         :return:               Reward and termination indicator
         """
-        reward = 10000 if self.current_node == len(self.actions) else placed_node
+        reward = 10000.0 if self.current_node == len(self.actions) else float(placed_node)
         if placed_node and self.clocking_scheme.upper() == "2DDWAVE":
             reward *= 1 - ((x + y) / (self.layout_mask_width * self.layout_mask_height))
 
         done = bool(self.current_node == len(self.actions) or not self.placement_possible)
         if self.current_node > self.max_placed_nodes:
-            print(f"New best placement: {self.current_node}/{len(self.actions)} ({time() - self.start:.2f}s)")
+            if self.verbose:
+                print(f"New best placement: {self.current_node}/{len(self.actions)} ({time() - self.start:.2f}s)")
             if self.verbose == 1:
                 print(self.layout)
             self.max_placed_nodes = self.current_node
             self.placement_times.append(time() - self.start)
             if self.current_node == len(self.actions):
-                print(f"Found solution after {time() - self.start:.2f}s")
+                if self.verbose:
+                    print(f"Found solution after {time() - self.start:.2f}s")
                 if self.optimize:
-                    print(f"Dimension before optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
+                    if self.verbose:
+                        print(f"Dimension before optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
                     pyfiction.post_layout_optimization(self.layout)
-                    print(self.layout)
-                    print(f"Dimension after optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
+                    if self.verbose:
+                        print(self.layout)
+                        print(f"Dimension after optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
                 self.save_layout()
                 stats = pyfiction.equivalence_checking_stats()
                 eq = pyfiction.equivalence_checking(self.layout, self.network, stats)
-                print(f"Equivalent: {eq}")
+                if self.verbose:
+                    print(f"Equivalent: {eq}")
 
-        return reward, done
+        return float(reward), done
 
-    def render(self, mode="human"):
+    def render(self, mode: str = "human") -> None:
         """Render current placement (not implemented).
 
         :param mode:    Render mode

@@ -1,5 +1,4 @@
 import argparse
-import os
 from pathlib import Path
 
 from sb3_contrib import MaskablePPO
@@ -21,17 +20,18 @@ def create_layout(
     reset_model: bool = True,
     verbose: int = 1,
     optimize: bool = True,
-):
-    for folder in ["layouts", "models", "tensorboard"]:
-        if not Path.exists(Path(folder)):
-            Path.mkdir(Path(folder), parents=True)
+) -> None:
+    for folder in (Path("layouts"), Path("models"), Path("tensorboard")):
+        folder.mkdir(parents=True, exist_ok=True)
 
     if minimal_layout_dimension:
-        if function in layout_dimensions[clocking_scheme][benchmark]:
-            layout_width, layout_height = layout_dimensions[clocking_scheme][benchmark][function]
-        else:
-            error_message = f"No predefined layout dimensions for {function} available"
-            raise Exception(error_message)
+        dimensions = layout_dimensions.get(clocking_scheme, {}).get(benchmark, {}).get(function)
+        if dimensions is None:
+            msg = (
+                f"No predefined layout dimensions for {benchmark}/{function} with the {clocking_scheme} clocking scheme"
+            )
+            raise ValueError(msg)
+        layout_width, layout_height = dimensions
 
     env = NanoPlacementEnv(
         clocking_scheme=clocking_scheme,
@@ -44,9 +44,11 @@ def create_layout(
         optimize=optimize,
     )
 
-    if reset_model or not Path.exists(
-        Path(f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}")
-    ):
+    model_path = Path("models") / (
+        f"ppo_{technology}_{benchmark}_{function}_"
+        f"{'ROW' if technology == 'SiDB' else clocking_scheme}_{layout_width}x{layout_height}.zip"
+    )
+    if reset_model or not model_path.exists():
         model = MaskablePPO(
             MaskableActorCriticPolicy,
             env,
@@ -54,17 +56,11 @@ def create_layout(
             verbose=1 if verbose in (2, 3) else 0,
             gamma=0.995,
             learning_rate=0.001,
-            tensorboard_log=f"./tensorboard/{function}/",
+            tensorboard_log=str(Path("tensorboard") / function),
         )
         reset_num_timesteps = True
     else:
-        model = MaskablePPO.load(
-            os.path.join(
-                "models",
-                f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
-            ),
-            env,
-        )
+        model = MaskablePPO.load(model_path, env=env)
         reset_num_timesteps = False
 
     model.learn(
@@ -73,16 +69,11 @@ def create_layout(
         reset_num_timesteps=reset_num_timesteps,
     )
 
-    model.save(
-        os.path.join(
-            "models",
-            f"ppo_{technology}_{function}_{'ROW' if technology == 'SiDB' else clocking_scheme}",
-        )
-    )
+    model.save(model_path)
 
 
-def start():
-    parser = argparse.ArgumentParser()
+def start() -> None:
+    parser = argparse.ArgumentParser(description="Place and route an FCN circuit with reinforcement learning.")
     parser.add_argument(
         "-b",
         "--benchmark",
@@ -100,6 +91,7 @@ def start():
     )
     parser.add_argument(
         "-c",
+        "--clocking-scheme",
         "--clocking_scheme",
         type=str,
         choices=["2DDWave", "USE", "RES", "ESR"],
@@ -116,12 +108,14 @@ def start():
     )
     parser.add_argument(
         "-l",
+        "--minimal-layout-dimension",
         "--minimal_layout_dimension",
         action="store_true",
         help="If True, experimentally found minimal layout dimensions are used (defaults to False).",
     )
     parser.add_argument(
         "-lw",
+        "--layout-width",
         "--layout_width",
         type=int,
         default=3,
@@ -129,6 +123,7 @@ def start():
     )
     parser.add_argument(
         "-lh",
+        "--layout-height",
         "--layout_height",
         type=int,
         default=4,
@@ -136,6 +131,7 @@ def start():
     )
     parser.add_argument(
         "-ts",
+        "--time-steps",
         "--time_steps",
         type=int,
         default=10000,
@@ -143,6 +139,7 @@ def start():
     )
     parser.add_argument(
         "-r",
+        "--reset-model",
         "--reset_model",
         action="store_true",
         help="If True, reset saved model and train from scratch (defaults to False).",
@@ -164,46 +161,19 @@ def start():
     )
     args = parser.parse_args()
     create_layout(
-        args.benchmark,
-        args.function,
-        args.clocking_scheme,
-        args.technology,
-        args.minimal_layout_dimension,
-        args.layout_width,
-        args.layout_height,
-        args.time_steps,
-        args.reset_model,
-        args.verbose,
-        args.optimize,
+        benchmark=args.benchmark,
+        function=args.function,
+        clocking_scheme=args.clocking_scheme,
+        technology=args.technology,
+        minimal_layout_dimension=args.minimal_layout_dimension,
+        layout_width=args.layout_width,
+        layout_height=args.layout_height,
+        time_steps=args.time_steps,
+        reset_model=args.reset_model,
+        verbose=args.verbose,
+        optimize=args.optimize,
     )
 
 
 if __name__ == "__main__":
-    benchmark = "trindade16"
-    function = "mux21"
-    clocking_scheme = "2DDWave"
-    technology = "QCA"
-    minimal_layout_dimension = False  # if False, user specified layout dimensions are chosen
-    layout_width = 3
-    layout_height = 4
-    time_steps = 10000
-    reset_model = True
-    verbose = 1  # 0: Only show number of placed gates
-    #              1: print layout after every new best placement
-    #              2: print training metrics
-    #              3: print layout and training metrics
-    optimize = True
-
-    create_layout(
-        benchmark=benchmark,
-        function=function,
-        clocking_scheme=clocking_scheme,
-        technology=technology,
-        minimal_layout_dimension=minimal_layout_dimension,
-        layout_width=layout_width,
-        layout_height=layout_height,
-        time_steps=time_steps,
-        reset_model=reset_model,
-        verbose=verbose,
-        optimize=optimize,
-    )
+    start()
