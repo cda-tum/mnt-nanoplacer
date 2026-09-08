@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING
@@ -27,7 +29,7 @@ class NanoPlacementEnv(gym.Env):
         verbose: int = 1,
         optimize: bool = True,
         *,
-        on_best: "Callable[[NanoPlacementEnv], None] | None" = None,
+        on_best: Callable[[NanoPlacementEnv], None] | None = None,
     ) -> None:
         """Constructor."""
         super().__init__()

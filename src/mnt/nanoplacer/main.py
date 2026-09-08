@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -27,8 +29,8 @@ def create_layout(
     optimize: bool = True,
     *,
     seed: int | None = None,
-    on_best: "Callable[[NanoPlacementEnv], None] | None" = None,
-    callback: "BaseCallback | None" = None,
+    on_best: Callable[[NanoPlacementEnv], None] | None = None,
+    callback: BaseCallback | None = None,
 ) -> None:
     """Train a placer, optionally reporting best layouts before the environment resets."""
     effective_clocking_scheme = "2DDWave" if technology.lower() == "sidb" else clocking_scheme

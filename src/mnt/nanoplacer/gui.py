@@ -17,7 +17,7 @@ from typing import Any
 
 try:
     from flask import Flask, jsonify, render_template, request, send_file
-    from werkzeug.exceptions import HTTPException
+    from werkzeug.exceptions import BadRequest, Conflict, HTTPException
     from werkzeug.serving import make_server
 except ImportError as exc:
     msg = 'Install the browser interface with: python -m pip install "mnt.nanoplacer[gui]"'
@@ -133,14 +133,14 @@ class Runs:
     def start(self, config: dict[str, Any]) -> None:
         if self.closed:
             msg = "The GUI is shutting down. Restart it before starting another run."
-            raise RuntimeError(msg)
+            raise Conflict(msg)
         if self.process is not None and self.process.poll() is None:
             msg = "A run is already active. Cancel it or wait for it to finish."
-            raise RuntimeError(msg)
+            raise Conflict(msg)
         model = self.saved_model(config) if config["resume"] else None
         if config["resume"] and model is None:
             msg = "No saved model matches this benchmark, technology, clocking scheme and grid size. Start a fresh run."
-            raise ValueError(msg)
+            raise BadRequest(msg)
         run_dir = self.directory / uuid.uuid4().hex
         run_dir.mkdir()
         (run_dir / "config.json").write_text(json.dumps(config), encoding="utf-8")
@@ -202,7 +202,7 @@ def _valid_id(value: str) -> bool:
 def _configuration(data: Any, benchmarks: dict[str, list[str]]) -> dict[str, Any]:
     if not isinstance(data, dict):
         msg = "Supply a JSON configuration."
-        raise ValueError(msg)
+        raise BadRequest(msg)
     config = {
         "benchmark": "trindade16",
         "function": "mux21",
@@ -218,19 +218,19 @@ def _configuration(data: Any, benchmarks: dict[str, list[str]]) -> dict[str, Any
     }
     if data.keys() - config.keys():
         msg = "Unknown configuration parameter."
-        raise ValueError(msg)
+        raise BadRequest(msg)
     config.update(data)
     benchmark, function = config["benchmark"], config["function"]
     if not isinstance(benchmark, str) or not isinstance(function, str) or function not in benchmarks.get(benchmark, []):
         msg = "Select a bundled benchmark and circuit."
-        raise ValueError(msg)
+        raise BadRequest(msg)
     if config["clocking_scheme"] not in CLOCKS or config["technology"] not in TECHNOLOGIES:
         msg = "Select a supported technology and clocking scheme."
-        raise ValueError(msg)
+        raise BadRequest(msg)
     for key in ("optimize", "minimal_layout_dimension", "resume"):
         if type(config[key]) is not bool:
             msg = f"{key} must be true or false."
-            raise ValueError(msg)
+            raise BadRequest(msg)
     if config["technology"] == "SiDB":
         config["clocking_scheme"] = "2DDWave"
     if config["clocking_scheme"] != "2DDWave":
@@ -239,7 +239,7 @@ def _configuration(data: Any, benchmarks: dict[str, list[str]]) -> dict[str, Any
         dimensions = layout_dimensions.get(config["clocking_scheme"], {}).get(benchmark, {}).get(function)
         if dimensions is None:
             msg = "No published dimensions exist for this circuit and clocking scheme. Choose a custom grid."
-            raise ValueError(msg)
+            raise BadRequest(msg)
         config["layout_width"], config["layout_height"] = dimensions
     for key, lower, upper in (
         ("layout_width", 1, MAX_DIMENSION),
@@ -249,7 +249,7 @@ def _configuration(data: Any, benchmarks: dict[str, list[str]]) -> dict[str, Any
     ):
         if type(config[key]) is not int or not lower <= config[key] <= upper:
             msg = f"{key} must be an integer between {lower} and {upper}."
-            raise ValueError(msg)
+            raise BadRequest(msg)
     return config
 
 
@@ -317,10 +317,6 @@ def create_app(runs_dir: Path | str = "nanoplacer-runs") -> Flask:
             with runs.lock:
                 runs.start(config)
                 return jsonify(runs.snapshot())
-        except ValueError as error:
-            return jsonify(error=str(error)), 400
-        except RuntimeError as error:
-            return jsonify(error=str(error)), 409
         except OSError:
             app.logger.exception("Could not start a NanoPlaceR process")
             return jsonify(error="Could not start training. Check that the run directory is writable."), 500
@@ -369,6 +365,7 @@ def main() -> None:
                 webbrowser.open(url)
             server.serve_forever()
         except KeyboardInterrupt:
+            # Ctrl+C exits quietly; the finally block stops any active worker.
             pass
         finally:
             app.extensions["nanoplacer_runs"].close()

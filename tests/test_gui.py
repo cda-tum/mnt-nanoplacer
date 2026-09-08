@@ -78,6 +78,18 @@ def test_gui_rejects_invalid_runs(local_gui, configuration: dict) -> None:
     launch.assert_not_called()
 
 
+@pytest.mark.parametrize("error_type", [ValueError, RuntimeError, OSError])
+def test_gui_keeps_unexpected_errors_in_server_log(local_gui, caplog, error_type) -> None:
+    app, client, _, launch = local_gui
+    app.config["PROPAGATE_EXCEPTIONS"] = False
+    launch.side_effect = error_type("private process details")
+    response = client.post("/api/start", json={})
+    assert response.status_code == 500
+    assert response.get_json()["error"]
+    assert "private process details" not in response.get_data(as_text=True)
+    assert "private process details" in caplog.text
+
+
 def test_gui_run_isolation_cancellation_and_artifacts(local_gui, monkeypatch: pytest.MonkeyPatch) -> None:
     app, client, process, launch = local_gui
     response = client.post("/api/start", json={"technology": "SiDB", "clocking_scheme": "USE"})
