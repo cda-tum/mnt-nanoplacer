@@ -46,9 +46,11 @@ classifiers = [
 [project.optional-dependencies]
 test = ["pytest>=8.2.1"]
 coverage = ["mnt.nanoplacer[test]", "pytest-cov"]
+gui = ["flask>=3.1"]
 
 [project.scripts]
 "mnt.nanoplacer" = "mnt.nanoplacer.main:start"
+"mnt.nanoplacer.gui" = "mnt.nanoplacer.gui:main"
 
 [project.urls]
 Homepage = "https://github.com/cda-tum/NanoPlaceR"
@@ -58,7 +60,7 @@ Research = "https://www.cda.cit.tum.de/research/fcn/"
 
 # ponytail: Editable installs need mnt.pyfiction to make its regular `mnt` package extensible; wheels merge safely.
 [tool.setuptools.package-data]
-"mnt.nanoplacer" = ["benchmarks/*/*.v"]
+"mnt.nanoplacer" = ["benchmarks/*/*.v", "templates/*.html", "static/*.css", "static/*.js", "static/*.svg"]
 
 [tool.setuptools_scm]
 

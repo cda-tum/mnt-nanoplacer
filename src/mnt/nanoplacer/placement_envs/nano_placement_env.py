@@ -1,11 +1,15 @@
 from pathlib import Path
 from time import time
+from typing import TYPE_CHECKING
 
 import gymnasium as gym
 import numpy as np
 
 from mnt import pyfiction
 from mnt.nanoplacer.placement_envs.utils import create_action_list, map_to_multidiscrete
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class NanoPlacementEnv(gym.Env):
@@ -22,6 +26,8 @@ class NanoPlacementEnv(gym.Env):
         function: str = "mux21",
         verbose: int = 1,
         optimize: bool = True,
+        *,
+        on_best: "Callable[[NanoPlacementEnv], None] | None" = None,
     ) -> None:
         """Constructor."""
         super().__init__()
@@ -82,6 +88,8 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask_width = 4
         self.layout_mask_height = 4
         self.optimize = optimize if self.clocking_scheme.upper() == "2DDWAVE" else False
+        self.on_best = on_best
+        self.equivalent: str | None = None
 
     def reset(self, seed: int | None = None, options: dict[str, object] | None = None) -> tuple[int, dict[str, object]]:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
@@ -548,8 +556,12 @@ class NanoPlacementEnv(gym.Env):
                 self.save_layout()
                 stats = pyfiction.equivalence_checking_stats()
                 eq = pyfiction.equivalence_checking(self.layout, self.network, stats)
+                self.equivalent = eq.name
                 if self.verbose:
                     print(f"Equivalent: {eq}")
+            if self.on_best is not None:
+                # VecEnv resets terminal layouts immediately after step(), so snapshot here.
+                self.on_best(self)
 
         return float(reward), done
 

@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from gymnasium.utils.env_checker import check_env
 from sb3_contrib import MaskablePPO
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import map_to_discrete
@@ -127,6 +128,30 @@ def test_action_masks_are_plain_booleans(env: NanoPlacementEnv) -> None:
     assert len(masks) == env.action_space.n
     assert all(isinstance(mask, bool) for mask in masks)
     assert any(masks)
+
+
+def test_best_hook_precedes_partial_and_complete_vecenv_resets(
+    env: NanoPlacementEnv, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    snapshots = []
+    env.on_best = lambda current: snapshots.append((current.current_node, current.equivalent, str(current.layout)))
+    wrapped = DummyVecEnv([lambda: env])
+    wrapped.reset()
+    wrapped.step([0])
+    _, _, done, _ = wrapped.step([0])  # Occupied tile ends this partial placement.
+    assert done[0]
+    assert env.current_node == 0
+    assert snapshots[0][0] == 1
+    assert snapshots[0][2] != str(env.layout)
+    for action in (3, 6, 0, 1, 7, 2, 5, 8, 11):
+        _, _, done, _ = wrapped.step([action])
+    assert done[0]
+    assert env.current_node == 0
+    assert [snapshot[0] for snapshot in snapshots] == list(range(1, len(env.actions) + 1))
+    assert snapshots[-1][1] == "STRONG"
+    assert snapshots[-1][2] != str(env.layout)
+    wrapped.close()
 
 
 def test_action_masks_return_safe_fallback_when_no_unoccupied_positions_remain(env: NanoPlacementEnv) -> None:

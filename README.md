@@ -61,6 +61,25 @@ mnt.nanoplacer --benchmark trindade16 --function mux21 \
 
 Runs store generated layouts in `layouts/`, trained agents in `models/`, and TensorBoard data in `tensorboard/`. By default, the CLI resumes a matching saved model when one exists; pass `--reset-model` to train from scratch.
 
+## Browser interface
+
+Install the optional standalone GUI and launch it locally:
+
+```console
+python -m pip install "mnt.nanoplacer[gui]"
+mnt.nanoplacer.gui
+```
+
+The interface opens at `http://127.0.0.1:5056`. Use `--port 5057` to choose another port, `--no-browser` to suppress automatic opening, or `--runs-dir PATH` to choose where experiments are saved.
+
+Choose a bundled circuit, technology and clocking scheme, then configure its grid, random seed and training budget. The canvas shows the best partial placement, including the actual clock phases; completed solutions are identified separately. SiDB uses 2DDWave during training and converts its output to a hexagonal layout. Optimization is available for 2DDWave only. Predefined minimum dimensions are experimental targets, not a guarantee that every seed or budget will find a solution.
+
+Training runs in a separate process, one run at a time per GUI instance. Reloading the page restores its current progress. The training statistics panel plots the mean return of the latest 100 completed episodes (fewer at the start), with sampled history and timesteps relative to the current run. It shows the agent's training reward, not an independent layout-quality score. Cancel requests a graceful stop and checkpoint save; if a native operation prevents that, the worker is terminated after a short grace period. Earlier run folders are preserved. A finished training budget without a solution is reported honestly as such. PPO may finish its current rollout beyond the requested timestep budget.
+
+Each run has its own folder under `nanoplacer-runs/`, with configuration, log, previews, generated layouts and a saved agent. Downloads become available when the worker stops writing its outputs. The resume option copies the latest compatible agent into a new run; circuit, technology, clocking scheme and grid size must match. Only checkpoints in local run folders are accepted; never add untrusted model files to them. Gate-level FGL output is also kept for complete solutions alongside the selected technology's usual output. Downloaded layouts can be opened in other MNT tools where their topology and clocking scheme are supported.
+
+This is a **local workstation interface**, bound to loopback, not a multi-user hosted service. It supports bundled benchmarks, grids up to 128 × 128, and budgets up to 10 million timesteps. The Python API and original CLI remain available without the GUI dependency.
+
 ## Repository structure
 
 ```text

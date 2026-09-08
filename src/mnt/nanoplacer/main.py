@@ -1,10 +1,16 @@
 import argparse
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from sb3_contrib import MaskablePPO
 
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import layout_dimensions
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from stable_baselines3.common.callbacks import BaseCallback
 
 
 def create_layout(
@@ -19,7 +25,12 @@ def create_layout(
     reset_model: bool = True,
     verbose: int = 1,
     optimize: bool = True,
+    *,
+    seed: int | None = None,
+    on_best: "Callable[[NanoPlacementEnv], None] | None" = None,
+    callback: "BaseCallback | None" = None,
 ) -> None:
+    """Train a placer, optionally reporting best layouts before the environment resets."""
     effective_clocking_scheme = "2DDWave" if technology.lower() == "sidb" else clocking_scheme
 
     for folder in (Path("layouts"), Path("models"), Path("tensorboard")):
@@ -44,6 +55,7 @@ def create_layout(
         function=function,
         verbose=1 if verbose in (1, 3) else 0,
         optimize=optimize,
+        **({"on_best": on_best} if on_best is not None else {}),
     )
 
     model_path = Path("models") / (
@@ -62,16 +74,20 @@ def create_layout(
                 Path("tensorboard")
                 / f"{technology}_{benchmark}_{function}_{effective_clocking_scheme}_{layout_width}x{layout_height}"
             ),
+            **({"seed": seed} if seed is not None else {}),
         )
         reset_num_timesteps = True
     else:
         model = MaskablePPO.load(model_path, env=env)
+        if seed is not None:
+            model.set_random_seed(seed)
         reset_num_timesteps = False
 
     model.learn(
         total_timesteps=time_steps,
         log_interval=1,
         reset_num_timesteps=reset_num_timesteps,
+        **({"callback": callback} if callback is not None else {}),
     )
 
     model.save(model_path)
