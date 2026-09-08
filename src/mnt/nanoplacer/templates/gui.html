@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='mnt-logo.svg') }}">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="A local workspace for reinforcement-learning-based placement and routing with NanoPlaceR.">
+    <title>NanoPlaceR · Local workspace</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='gui.css') }}">
+    <script src="{{ url_for('static', filename='gui.js') }}" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="NanoPlaceR home">
+        <img src="{{ url_for('static', filename='mnt-logo.svg') }}" width="68" height="32" alt="MNT">
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span>NanoPlace<span class="brand-r">R</span></span>
+      </a>
+      <div class="local-badge"><span aria-hidden="true"></span> Local workspace <span id="version" class="version"></span></div>
+    </header>
+
+    <main id="workspace">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">REINFORCEMENT LEARNING · PHYSICAL DESIGN</p>
+          <h1 id="page-title">Small circuits.<br><span>New possibilities.</span></h1>
+          <p class="intro-copy">Let an agent explore placement and routing.<br class="desktop-break"> Watch the best layout emerge, one decision at a time.</p>
+        </div>
+        <div class="intro-note"><span class="note-icon" aria-hidden="true">↗</span><p>Your machine.<br>Your experiment.<small>Runs and results stay local.</small></p></div>
+      </section>
+
+      <div id="message" class="message" role="alert" hidden></div>
+      <noscript><p class="message">Enable JavaScript to configure a run and view layouts. The command-line NanoPlaceR interface remains available.</p></noscript>
+
+      <div class="workspace-grid">
+        <aside class="configuration card" aria-labelledby="configuration-title">
+          <div class="card-heading"><div><p class="eyebrow">01 / SET UP</p><h2 id="configuration-title">Your experiment</h2></div><span class="section-icon" aria-hidden="true">⌘</span></div>
+          <form id="run-form">
+            <fieldset id="configuration-fields" disabled>
+              <legend class="sr-only">Experiment settings</legend>
+              <div class="field"><label for="benchmark">Benchmark collection</label><select id="benchmark" name="benchmark" required><option value="">Loading benchmarks…</option></select></div>
+              <div class="field"><label for="function">Circuit</label><select id="function" name="function" required><option value="">Choose a collection</option></select></div>
+              <div class="field-row">
+                <div class="field"><label for="technology">Technology</label><select id="technology" name="technology" required></select></div>
+                <div class="field"><label for="clocking-scheme">Clocking</label><select id="clocking-scheme" name="clocking_scheme" required></select></div>
+              </div>
+              <p id="technology-hint" class="field-hint" hidden>SiDB uses 2DDWave during training, then maps the result to a hexagonal SiDB layout.</p>
+
+              <div class="form-section">
+                <div class="section-label"><span>Layout dimensions</span><span id="tile-count" class="mini-badge">— tiles</span></div>
+                <label class="check-row"><input id="minimum-dimensions" type="checkbox" checked><span>Use reported minimum dimensions</span></label>
+                <p id="dimension-hint" class="field-hint">A starting point from the published benchmark data, not a guaranteed result.</p>
+                <div class="field-row">
+                  <div class="field"><label for="layout-width">Width <span class="unit">tiles</span></label><input id="layout-width" name="layout_width" type="number" min="1" max="128" step="1" value="4" required></div>
+                  <div class="field"><label for="layout-height">Height <span class="unit">tiles</span></label><input id="layout-height" name="layout_height" type="number" min="1" max="128" step="1" value="3" required></div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-label"><span>Training budget</span><span class="mini-badge">PPO agent</span></div>
+                <div class="field-row">
+                  <div class="field"><label for="time-steps">Timesteps</label><input id="time-steps" name="time_steps" type="number" min="1" max="10000000" step="1" value="10000" required></div>
+                  <div class="field"><label for="seed">Random seed</label><input id="seed" name="seed" type="number" min="0" max="4294967295" step="1" value="42" required></div>
+                </div>
+                <p class="field-hint">A larger budget gives the agent more opportunities to find a complete layout.</p>
+                <label class="check-row"><input id="optimize" type="checkbox" checked><span>Post-layout optimization <small id="optimize-hint">Available with 2DDWave.</small></span></label>
+                <label class="check-row"><input id="resume" type="checkbox" disabled><span>Resume saved model <small id="resume-hint">Available after a model has been saved. Settings must match.</small></span></label>
+              </div>
+            </fieldset>
+            <button id="start-button" class="button primary start-button" type="submit" disabled><span aria-hidden="true">▶</span> Start experiment</button>
+            <p class="local-footnote">One experiment at a time. You can stop a run and keep its available results.</p>
+          </form>
+        </aside>
+
+        <div class="results-column">
+          <section class="run-card card" aria-labelledby="run-title">
+            <div class="run-heading"><div><p class="eyebrow">02 / EXPLORE</p><h2 id="run-title">Ready when you are</h2></div><span id="run-status" class="status-badge" data-state="idle">Ready</span></div>
+            <p id="run-description" class="run-description">Choose a circuit and start your first experiment.</p>
+            <div class="progress-heading"><span id="progress-label">Training progress</span><span id="progress-value">—</span></div>
+            <progress id="training-progress" max="100" value="0" aria-label="Training progress"></progress>
+            <div class="metrics">
+              <div><span>Timesteps</span><strong id="steps-value">—</strong></div>
+              <div><span>Episodes</span><strong id="episodes-value">—</strong></div>
+              <div><span>Elapsed</span><strong id="elapsed-value">—</strong></div>
+              <div><span>Best placed</span><strong id="placed-value">—</strong></div>
+            </div>
+            <div class="run-bottom"><p id="run-outcome" role="status" aria-live="polite">No experiment started yet.</p><button id="cancel-button" class="button subtle danger" type="button" hidden>Stop run</button></div>
+            <details class="reward-details" open>
+              <summary>Training statistics <span aria-hidden="true">⌄</span></summary>
+              <div class="reward-heading"><div><h3>Mean episode reward</h3><p>Rolling mean · latest 100 completed episodes</p></div><strong id="reward-value">—</strong></div>
+              <div id="reward-chart-wrap" class="reward-chart-wrap">
+                <canvas id="reward-canvas" role="img" aria-label="Training reward curve" aria-describedby="reward-summary" hidden></canvas>
+                <p id="reward-empty">Start an experiment to see how the agent learns.</p>
+              </div>
+              <p id="reward-summary" class="reward-summary">Rewards are measured after each completed episode. History is sampled for display.</p>
+            </details>
+          </section>
+
+          <section class="preview-card card" aria-labelledby="preview-title">
+            <div class="preview-heading"><div><p class="eyebrow">03 / DISCOVER</p><h2 id="preview-title">A place for every gate</h2></div><div class="view-controls" role="group" aria-label="Layout viewport"><button id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out (−)" disabled>−</button><button id="fit-view" type="button" title="Fit layout (0)" disabled>Fit</button><button id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in (+)" disabled>+</button></div></div>
+            <div id="canvas-wrap" class="canvas-wrap">
+              <canvas id="layout-canvas" tabindex="0" role="img" aria-label="Read-only best layout preview" aria-describedby="canvas-help canvas-detail" hidden></canvas>
+              <div id="preview-empty" class="preview-empty">
+                <div class="science-visual" aria-hidden="true">
+                  <span class="visual-orbit orbit-one"></span><span class="visual-orbit orbit-two"></span>
+                  <div class="illustration-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                  <span class="visual-spark spark-one"></span><span class="visual-spark spark-two"></span>
+                </div>
+                <p class="empty-kicker">A little learning. A better layout.</p>
+                <p id="preview-empty-description">The best observed placement will appear here.<br>This animation is an illustration, not a training result.</p>
+              </div>
+              <span id="preview-kind" class="preview-kind" hidden>Best partial placement</span>
+            </div>
+            <div class="preview-footer"><p id="canvas-detail" role="status" aria-live="polite">Gate-level preview · read-only</p><span id="preview-dimensions">—</span></div>
+            <div class="canvas-legend" id="canvas-help"><span><i class="legend-line"></i> Ground layer</span><span><i class="legend-line upper"></i> Upper layer</span><span class="canvas-instructions">Drag to pan · scroll to zoom · arrow keys to pan · 0 to fit · click a tile for details</span></div>
+          </section>
+
+          <section class="artifacts-card card" aria-labelledby="artifacts-title"><div class="artifact-heading"><div><p class="eyebrow">KEEP EXPLORING</p><h2 id="artifacts-title">Results &amp; diagnostics</h2></div><span id="file-count" class="mini-badge">0 files</span></div><p id="files-empty" class="field-hint">Available layouts, saved models and other outputs will appear here.</p><ul id="files-list" class="files-list"></ul><details class="log-details"><summary>Training log <span aria-hidden="true">⌄</span></summary><pre id="run-log" tabindex="0" aria-label="Training log">Logs will appear after a run starts.</pre></details></section>
+        </div>
+      </div>
+    </main>
+    <footer class="site-footer"><span>NanoPlaceR <span aria-hidden="true">·</span> Munich Nanotech Toolkit</span><span>Built for the next scale of computing.</span></footer>
+  </body>
+</html>

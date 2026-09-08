@@ -53,6 +53,37 @@ def test_create_layout_resumes_the_saved_model(tmp_path: Path, monkeypatch: pyte
     model.save.assert_called_once_with(model_path)
 
 
+@pytest.mark.parametrize("resume", [False, True])
+def test_optional_seed_and_gui_hooks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, resume: bool) -> None:
+    monkeypatch.chdir(tmp_path)
+    model_path = Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip")
+    model_path.parent.mkdir()
+    model_path.touch()
+    on_best, callback = Mock(), Mock()
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
+        patch("mnt.nanoplacer.main.MaskablePPO") as ppo,
+    ):
+        create_layout(
+            minimal_layout_dimension=False,
+            reset_model=not resume,
+            time_steps=8,
+            seed=42,
+            on_best=on_best,
+            callback=callback,
+        )
+    assert env.call_args.kwargs["on_best"] is on_best
+    model = ppo.load.return_value if resume else ppo.return_value
+    if resume:
+        model.set_random_seed.assert_called_once_with(42)
+    else:
+        assert ppo.call_args.kwargs["seed"] == 42
+    model.learn.assert_called_once_with(
+        total_timesteps=8, log_interval=1, reset_num_timesteps=not resume, callback=callback
+    )
+    model.save.assert_called_once_with(model_path)
+
+
 def test_create_layout_uses_iscas85_dimensions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
 
