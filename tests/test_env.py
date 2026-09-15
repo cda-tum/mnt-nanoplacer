@@ -316,8 +316,9 @@ def test_reverse_routing_preserves_inputs_and_failed_obstructions(
             optimize=False,
             verbose=0,
         )
-    routing_env.step(1)  # a at (1, 0)
-    routing_env.step(6)  # b at (0, 1)
+    # Native fanin order may differ from PI order; fix the routing source positions.
+    for pi in routing_env.actions[:2]:
+        routing_env.step(1 if pi == routing_env._preceding_nodes[2][0] else 6)
     layout = routing_env.layout
     layout.obstruct_coordinate((5, 2, 1))  # An unrelated, pre-existing empty-tile mark.
     if blocked:
@@ -325,7 +326,20 @@ def test_reverse_routing_preserves_inputs_and_failed_obstructions(
     before = {
         (x, y, z): layout.is_obstructed_coordinate((x, y, z)) for x in range(6) for y in range(3) for z in range(2)
     }
-    routing_env.step(10)  # AND at (4, 1); a-first blocks b, b-first can rescue it.
+    native_a_star = pyfiction.a_star
+    route_sources = []
+
+    def first_route_conflict(current_layout, source, target, params):
+        if target == (4, 1):
+            route_sources.append((source.x, source.y))
+            if len(route_sources) == 1:
+                # Pin one valid path instead of relying on native equal-cost tie-breaking.
+                return [pyfiction.offset_coordinate(x, y, 0) for x, y in ((1, 0), (2, 0), (2, 1), (3, 1), (4, 1))]
+        return native_a_star(current_layout, source, target, params)
+
+    with patch("mnt.pyfiction.a_star", side_effect=first_route_conflict):
+        routing_env.step(10)  # AND at (4, 1); only the first route is controlled.
+    assert route_sources == [(1, 0), (0, 1)] + ([(0, 1), (1, 0)] if fallback else [])
     if fallback and not blocked:
         assert routing_env.current_node == 3
         ancestors = []
