@@ -29,6 +29,7 @@ class NanoPlacementEnv(gym.Env):
         verbose: int = 1,
         optimize: bool = True,
         *,
+        routing_fallback: bool = False,
         on_best: Callable[[NanoPlacementEnv], None] | None = None,
     ) -> None:
         """Constructor."""
@@ -92,6 +93,7 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask_width = 4
         self.layout_mask_height = 4
         self.optimize = optimize if self.clocking_scheme.upper() == "2DDWAVE" else False
+        self.routing_fallback = routing_fallback
         self.on_best = on_best
         self.equivalent: str | None = None
 
@@ -190,29 +192,18 @@ class NanoPlacementEnv(gym.Env):
 
                 self.last_pos = (x, y)
 
-                params = pyfiction.a_star_params()
-                params.crossings = True
-                path_node_1 = pyfiction.a_star(self.layout, layout_tile_1, (x, y), params)
-                if len(path_node_1) != 0:
+                path_node_1, path_node_2 = self._two_input_paths(layout_tile_1, layout_tile_2, (x, y))
+                if self.routing_fallback and path_node_1 and not path_node_2:
+                    path_node_2, path_node_1 = self._two_input_paths(layout_tile_2, layout_tile_1, (x, y))
+                if path_node_1 and path_node_2:
+                    placed_node = True
+                    self.current_tries = 0
+                    pyfiction.route_path(self.layout, path_node_1)
+                    pyfiction.route_path(self.layout, path_node_2)
+                    for el in path_node_2:
+                        self.occupied_tiles[el.x][el.y] = 1
                     for el in path_node_1:
-                        self.layout.obstruct_coordinate(el)
-                    path_node_2 = pyfiction.a_star(self.layout, layout_tile_2, (x, y), params)
-                    if len(path_node_2) != 0:
-                        for el in path_node_2:
-                            self.layout.obstruct_coordinate(el)
-                        placed_node = True
-                        self.current_tries = 0
-                        pyfiction.route_path(self.layout, path_node_1)
-                        pyfiction.route_path(self.layout, path_node_2)
-                        for el in path_node_2:
-                            self.occupied_tiles[el.x][el.y] = 1
-                        for el in path_node_1:
-                            self.occupied_tiles[el.x][el.y] = 1
-
-                    else:
-                        self.current_tries += 1
-                        for el in path_node_1:
-                            self.layout.clear_obstructed_coordinate(el)
+                        self.occupied_tiles[el.x][el.y] = 1
                 else:
                     self.current_tries += 1
 
@@ -286,6 +277,37 @@ class NanoPlacementEnv(gym.Env):
 
         info = {}
         return observation, reward, done, False, info
+
+    def _two_input_paths(self, source_1, source_2, target):
+        """Try one routing order, undoing temporary obstructions on failure."""
+        params = pyfiction.a_star_params()
+        params.crossings = True
+        path_1 = pyfiction.a_star(self.layout, source_1, target, params)
+        if not path_1:
+            return path_1, []
+        # Keep legacy behavior by default. Retrying must preserve existing marks,
+        # including occupied source/target tiles, before trying the other order.
+        temporary = (
+            [coordinate for coordinate in path_1 if not self.layout.is_obstructed_coordinate(coordinate)]
+            if self.routing_fallback
+            else path_1
+        )
+        for coordinate in temporary:
+            self.layout.obstruct_coordinate(coordinate)
+        path_2 = []
+        try:
+            path_2 = pyfiction.a_star(self.layout, source_2, target, params)
+        finally:
+            if not path_2:
+                for coordinate in temporary:
+                    self.layout.clear_obstructed_coordinate(coordinate)
+        if path_2:
+            if self.routing_fallback:
+                for coordinate in path_1:
+                    self.layout.obstruct_coordinate(coordinate)
+            for coordinate in path_2:
+                self.layout.obstruct_coordinate(coordinate)
+        return path_1, path_2
 
     def save_layout(self) -> None:
         """Creates cell layout and saves it as .svg for QCA and .dot for SiDB.

@@ -6,6 +6,7 @@ from gymnasium.utils.env_checker import check_env
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from mnt import pyfiction
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import map_to_discrete
 
@@ -296,6 +297,56 @@ def test_action_masks_allow_terminal_observation(env: NanoPlacementEnv) -> None:
 
     assert env.observation_space.contains(env.current_node)
     assert env.action_masks() == [True] * env.action_space.n
+
+
+@pytest.mark.parametrize(("fallback", "blocked"), [(False, False), (True, False), (True, True)])
+def test_reverse_routing_preserves_inputs_and_failed_obstructions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fallback: bool, blocked: bool
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    circuit = tmp_path / "and.v"
+    circuit.write_text("module top(a, b, f);\ninput a, b;\noutput f;\nassign f = a & b;\nendmodule\n")
+    network = pyfiction.read_technology_network(str(circuit))
+    with patch("mnt.pyfiction.read_technology_network", return_value=network):
+        routing_env = NanoPlacementEnv(
+            layout_width=6,
+            layout_height=3,
+            technology="Gate-level",
+            routing_fallback=fallback,
+            optimize=False,
+            verbose=0,
+        )
+    routing_env.step(1)  # a at (1, 0)
+    routing_env.step(6)  # b at (0, 1)
+    layout = routing_env.layout
+    layout.obstruct_coordinate((5, 2, 1))  # An unrelated, pre-existing empty-tile mark.
+    if blocked:
+        layout.obstruct_coordinate((3, 0))  # Also blocks the alternative path for a.
+    before = {
+        (x, y, z): layout.is_obstructed_coordinate((x, y, z)) for x in range(6) for y in range(3) for z in range(2)
+    }
+    routing_env.step(10)  # AND at (4, 1); a-first blocks b, b-first can rescue it.
+    if fallback and not blocked:
+        assert routing_env.current_node == 3
+        ancestors = []
+        for fanin in layout.fanins((4, 1)):
+            ancestor = fanin
+            while not layout.is_pi(layout.get_node(ancestor)):
+                ancestor = layout.fanins(ancestor)[0]
+            ancestors.append((ancestor.x, ancestor.y, ancestor.z))
+        assert sorted(ancestors) == [(0, 1, 0), (1, 0, 0)]
+        routing_env.step(11)  # PO at (5, 1).
+        assert routing_env.equivalent == "STRONG"
+    else:
+        assert routing_env.current_node == 2
+        assert routing_env.current_tries == 1
+        if fallback:
+            for coordinate, obstructed in before.items():
+                if coordinate != (4, 1, 0):  # The failed gate itself was just placed here.
+                    assert layout.is_obstructed_coordinate(coordinate) == obstructed
+            # Moving a PI exposes its explicit mark, otherwise hidden by occupancy.
+            layout.move_node(layout.get_node((1, 0)), (5, 2), [])
+            assert layout.is_obstructed_coordinate((1, 0))
 
 
 def test_maskable_ppo_can_learn(env: NanoPlacementEnv, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

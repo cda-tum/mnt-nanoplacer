@@ -29,10 +29,15 @@ def create_layout(
     optimize: bool = True,
     *,
     seed: int | None = None,
+    routing_fallback: bool = False,
     on_best: Callable[[NanoPlacementEnv], None] | None = None,
     callback: BaseCallback | None = None,
 ) -> None:
-    """Train a placer, optionally reporting best layouts before the environment resets."""
+    """Train a placer, optionally reporting best layouts before the environment resets.
+
+    routing_fallback experimentally retries blocked two-input routes in reverse order.
+    It uses separate checkpoints so normal runs do not silently resume a changed search.
+    """
     effective_clocking_scheme = "2DDWave" if technology.lower() == "sidb" else clocking_scheme
 
     for folder in (Path("layouts"), Path("models"), Path("tensorboard")):
@@ -57,12 +62,15 @@ def create_layout(
         function=function,
         verbose=1 if verbose in (1, 3) else 0,
         optimize=optimize,
+        routing_fallback=routing_fallback,
         **({"on_best": on_best} if on_best is not None else {}),
     )
 
+    routing_suffix = "_routing-fallback" if routing_fallback else ""
     model_path = Path("models") / (
         f"ppo_{technology}_{benchmark}_{function}_"
-        f"{'ROW' if technology.lower() == 'sidb' else effective_clocking_scheme}_{layout_width}x{layout_height}.zip"
+        f"{'ROW' if technology.lower() == 'sidb' else effective_clocking_scheme}_"
+        f"{layout_width}x{layout_height}{routing_suffix}.zip"
     )
     if reset_model or not model_path.exists():
         model = MaskablePPO(
@@ -73,8 +81,8 @@ def create_layout(
             gamma=0.995,
             learning_rate=0.001,
             tensorboard_log=str(
-                Path("tensorboard")
-                / f"{technology}_{benchmark}_{function}_{effective_clocking_scheme}_{layout_width}x{layout_height}"
+                Path("tensorboard") / f"{technology}_{benchmark}_{function}_{effective_clocking_scheme}_"
+                f"{layout_width}x{layout_height}{routing_suffix}"
             ),
             **({"seed": seed} if seed is not None else {}),
         )
@@ -182,6 +190,11 @@ def start() -> None:
         action="store_true",
         help="If True, layout will be further optimized after placement.",
     )
+    parser.add_argument(
+        "--routing-fallback",
+        action="store_true",
+        help="Experimentally retry blocked two-input routes in reverse order; use a separate checkpoint.",
+    )
     args = parser.parse_args()
     create_layout(
         benchmark=args.benchmark,
@@ -195,6 +208,7 @@ def start() -> None:
         reset_model=args.reset_model,
         verbose=args.verbose,
         optimize=args.optimize,
+        routing_fallback=args.routing_fallback,
     )
 
 
