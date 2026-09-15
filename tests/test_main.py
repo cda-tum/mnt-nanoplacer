@@ -97,6 +97,34 @@ def test_create_layout_uses_iscas85_dimensions(tmp_path: Path, monkeypatch: pyte
     assert env.call_args.kwargs["layout_height"] == 7
 
 
+@pytest.mark.parametrize("resume", [False, True])
+def test_routing_fallback_uses_separate_checkpoints(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, resume: bool
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    legacy = Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip")
+    legacy.parent.mkdir()
+    legacy.touch()
+    fallback = legacy.with_stem(legacy.stem + "_routing-fallback")
+    if resume:
+        fallback.touch()
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
+        patch("mnt.nanoplacer.main.MaskablePPO") as ppo,
+    ):
+        create_layout(minimal_layout_dimension=False, time_steps=8, reset_model=False, routing_fallback=True)
+    assert env.call_args.kwargs["routing_fallback"] is True
+    if resume:
+        ppo.assert_not_called()
+        ppo.load.assert_called_once_with(fallback, env=env.return_value)
+        model = ppo.load.return_value
+    else:
+        ppo.load.assert_not_called()
+        assert ppo.call_args.kwargs["tensorboard_log"].endswith("3x4_routing-fallback")
+        model = ppo.return_value
+    model.save.assert_called_once_with(fallback)
+
+
 def test_create_layout_uses_2ddwave_dimensions_for_sidb(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
 
@@ -143,6 +171,7 @@ def test_start_forwards_cli_arguments_by_keyword(monkeypatch: pytest.MonkeyPatch
             "--verbose",
             "3",
             "--optimize",
+            "--routing-fallback",
         ],
     )
 
@@ -161,4 +190,5 @@ def test_start_forwards_cli_arguments_by_keyword(monkeypatch: pytest.MonkeyPatch
         reset_model=True,
         verbose=3,
         optimize=True,
+        routing_fallback=True,
     )

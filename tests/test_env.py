@@ -6,6 +6,7 @@ from gymnasium.utils.env_checker import check_env
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from mnt import pyfiction
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import map_to_discrete
 
@@ -130,6 +131,50 @@ def test_action_masks_are_plain_booleans(env: NanoPlacementEnv) -> None:
     assert any(masks)
 
 
+def test_step_reuses_mask_count_for_both_gate_arities(env: NanoPlacementEnv, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    for action in (3, 6, 0, 1, 7, 2, 5, 8, 11):
+        masks = env.action_masks()
+        gate_type = env.node_to_action[env.actions[env.current_node]]
+        with patch.object(env, "action_masks", wraps=env.action_masks) as calculate_mask:
+            env.step(action)
+        calculate_mask.assert_not_called()
+        if gate_type != "INPUT":
+            assert env.max_tries == sum(masks)
+        assert env._action_mask_count is None
+    assert env.equivalent == "STRONG"
+
+
+def test_direct_steps_recalculate_mask_count(env: NanoPlacementEnv) -> None:
+    for action in (3, 6, 0):
+        env.step(action)
+    for action in (1, 7):
+        with patch.object(env, "action_masks", wraps=env.action_masks) as calculate_mask:
+            env.step(action)
+        calculate_mask.assert_called_once()
+        assert env._action_mask_count is None
+
+
+def test_mask_count_is_invalidated_by_failed_step_and_reset(env: NanoPlacementEnv) -> None:
+    env.step(0)
+    env.action_masks()
+    assert env._action_mask_count is not None
+    assert env.step(0)[2]  # An occupied tile terminates without placing another node.
+    assert env._action_mask_count is None
+    env.action_masks()
+    env.reset()
+    assert env._action_mask_count is None
+    assert env.layout_mask_width == env.layout_mask_height == 4
+
+
+def test_repeated_mask_requests_recheck_mutated_placement(env: NanoPlacementEnv) -> None:
+    env.action_masks()
+    env.occupied_tiles.fill(1)
+    assert env.action_masks() == [True] * env.action_space.n
+    assert not env.placement_possible
+    assert env._action_mask_count is None
+
+
 def test_best_hook_precedes_partial_and_complete_vecenv_resets(
     env: NanoPlacementEnv, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -252,6 +297,70 @@ def test_action_masks_allow_terminal_observation(env: NanoPlacementEnv) -> None:
 
     assert env.observation_space.contains(env.current_node)
     assert env.action_masks() == [True] * env.action_space.n
+
+
+@pytest.mark.parametrize(("fallback", "blocked"), [(False, False), (True, False), (True, True)])
+def test_reverse_routing_preserves_inputs_and_failed_obstructions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fallback: bool, blocked: bool
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    circuit = tmp_path / "and.v"
+    circuit.write_text("module top(a, b, f);\ninput a, b;\noutput f;\nassign f = a & b;\nendmodule\n")
+    network = pyfiction.read_technology_network(str(circuit))
+    with patch("mnt.pyfiction.read_technology_network", return_value=network):
+        routing_env = NanoPlacementEnv(
+            layout_width=6,
+            layout_height=3,
+            technology="Gate-level",
+            routing_fallback=fallback,
+            optimize=False,
+            verbose=0,
+        )
+    # Native fanin order may differ from PI order; fix the routing source positions.
+    for pi in routing_env.actions[:2]:
+        routing_env.step(1 if pi == routing_env._preceding_nodes[2][0] else 6)
+    layout = routing_env.layout
+    layout.obstruct_coordinate((5, 2, 1))  # An unrelated, pre-existing empty-tile mark.
+    if blocked:
+        layout.obstruct_coordinate((3, 0))  # Also blocks the alternative path for a.
+    before = {
+        (x, y, z): layout.is_obstructed_coordinate((x, y, z)) for x in range(6) for y in range(3) for z in range(2)
+    }
+    native_a_star = pyfiction.a_star
+    route_sources = []
+
+    def first_route_conflict(current_layout, source, target, params):
+        if target == (4, 1):
+            route_sources.append((source.x, source.y))
+            if len(route_sources) == 1:
+                # Pin one valid path instead of relying on native equal-cost tie-breaking.
+                return [pyfiction.offset_coordinate(x, y, 0) for x, y in ((1, 0), (2, 0), (2, 1), (3, 1), (4, 1))]
+        return native_a_star(current_layout, source, target, params)
+
+    with patch("mnt.pyfiction.a_star", side_effect=first_route_conflict):
+        routing_env.step(10)  # AND at (4, 1); only the first route is controlled.
+    assert route_sources == [(1, 0), (0, 1)] + ([(0, 1), (1, 0)] if fallback else [])
+    if fallback and not blocked:
+        assert routing_env.current_node == 3
+        ancestors = []
+        for fanin in layout.fanins((4, 1)):
+            ancestor = fanin
+            while not layout.is_pi(layout.get_node(ancestor)):
+                ancestor = layout.fanins(ancestor)[0]
+            ancestors.append((ancestor.x, ancestor.y, ancestor.z))
+        assert sorted(ancestors) == [(0, 1, 0), (1, 0, 0)]
+        routing_env.step(11)  # PO at (5, 1).
+        assert routing_env.equivalent == "STRONG"
+    else:
+        assert routing_env.current_node == 2
+        assert routing_env.current_tries == 1
+        if fallback:
+            for coordinate, obstructed in before.items():
+                if coordinate != (4, 1, 0):  # The failed gate itself was just placed here.
+                    assert layout.is_obstructed_coordinate(coordinate) == obstructed
+            # Moving a PI exposes its explicit mark, otherwise hidden by occupancy.
+            layout.move_node(layout.get_node((1, 0)), (5, 2), [])
+            assert layout.is_obstructed_coordinate((1, 0))
 
 
 def test_maskable_ppo_can_learn(env: NanoPlacementEnv, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

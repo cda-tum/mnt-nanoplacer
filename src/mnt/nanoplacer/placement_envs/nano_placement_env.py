@@ -29,6 +29,7 @@ class NanoPlacementEnv(gym.Env):
         verbose: int = 1,
         optimize: bool = True,
         *,
+        routing_fallback: bool = False,
         on_best: Callable[[NanoPlacementEnv], None] | None = None,
     ) -> None:
         """Constructor."""
@@ -69,6 +70,7 @@ class NanoPlacementEnv(gym.Env):
             self.pi_names,
             self.po_names,
         ) = create_action_list(self.benchmark, self.function)
+        self._preceding_nodes = tuple(tuple(self.DG.predecessors(node)) for node in self.actions)
         self.observation_space = gym.spaces.Discrete(len(self.actions) + 1)
 
         self.action_space = gym.spaces.Discrete(self.layout_width * self.layout_height)
@@ -83,6 +85,7 @@ class NanoPlacementEnv(gym.Env):
         self.current_tries = 0
         self.max_tries = 0
         self.tried_positions: set[tuple[int, int]] = set()
+        self._action_mask_count: tuple[int, int, int, int] | None = None
         self.start = time()
         self.placement_times = []
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
@@ -90,6 +93,7 @@ class NanoPlacementEnv(gym.Env):
         self.layout_mask_width = 4
         self.layout_mask_height = 4
         self.optimize = optimize if self.clocking_scheme.upper() == "2DDWAVE" else False
+        self.routing_fallback = routing_fallback
         self.on_best = on_best
         self.equivalent: str | None = None
 
@@ -121,6 +125,7 @@ class NanoPlacementEnv(gym.Env):
         self.last_pos = None
         self.max_tries = 0
         self.tried_positions.clear()
+        self._action_mask_count = None
         self.layout_mask_width = 4
         self.layout_mask_height = 4
 
@@ -143,7 +148,14 @@ class NanoPlacementEnv(gym.Env):
 
         x, y = map_to_multidiscrete(action, self.layout_width)
 
-        preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
+        preceding_nodes = self._preceding_nodes[self.current_node]
+        cached_count = self._action_mask_count
+        self._action_mask_count = None
+        mask_count = (
+            cached_count[3]
+            if cached_count is not None and cached_count[:3] == (id(self.layout), self.current_node, self.current_tries)
+            else None
+        )
 
         if not self.placement_possible or not self.layout.is_empty_tile((x, y)):
             done = True
@@ -160,7 +172,8 @@ class NanoPlacementEnv(gym.Env):
                 "XOR",
             ]:
                 if self.current_tries == 0:
-                    self.max_tries = sum(self.action_masks())
+                    self.max_tries = mask_count if mask_count is not None else sum(self.action_masks())
+                    self._action_mask_count = None
                 self.tried_positions.add((x, y))
 
                 layout_node_1 = self.node_dict[preceding_nodes[0]]
@@ -179,29 +192,18 @@ class NanoPlacementEnv(gym.Env):
 
                 self.last_pos = (x, y)
 
-                params = pyfiction.a_star_params()
-                params.crossings = True
-                path_node_1 = pyfiction.a_star(self.layout, layout_tile_1, (x, y), params)
-                if len(path_node_1) != 0:
+                path_node_1, path_node_2 = self._two_input_paths(layout_tile_1, layout_tile_2, (x, y))
+                if self.routing_fallback and path_node_1 and not path_node_2:
+                    path_node_2, path_node_1 = self._two_input_paths(layout_tile_2, layout_tile_1, (x, y))
+                if path_node_1 and path_node_2:
+                    placed_node = True
+                    self.current_tries = 0
+                    pyfiction.route_path(self.layout, path_node_1)
+                    pyfiction.route_path(self.layout, path_node_2)
+                    for el in path_node_2:
+                        self.occupied_tiles[el.x][el.y] = 1
                     for el in path_node_1:
-                        self.layout.obstruct_coordinate(el)
-                    path_node_2 = pyfiction.a_star(self.layout, layout_tile_2, (x, y), params)
-                    if len(path_node_2) != 0:
-                        for el in path_node_2:
-                            self.layout.obstruct_coordinate(el)
-                        placed_node = True
-                        self.current_tries = 0
-                        pyfiction.route_path(self.layout, path_node_1)
-                        pyfiction.route_path(self.layout, path_node_2)
-                        for el in path_node_2:
-                            self.occupied_tiles[el.x][el.y] = 1
-                        for el in path_node_1:
-                            self.occupied_tiles[el.x][el.y] = 1
-
-                    else:
-                        self.current_tries += 1
-                        for el in path_node_1:
-                            self.layout.clear_obstructed_coordinate(el)
+                        self.occupied_tiles[el.x][el.y] = 1
                 else:
                     self.current_tries += 1
 
@@ -215,7 +217,8 @@ class NanoPlacementEnv(gym.Env):
                 "OUTPUT",
             ]:
                 if self.current_tries == 0:
-                    self.max_tries = sum(self.action_masks())
+                    self.max_tries = mask_count if mask_count is not None else sum(self.action_masks())
+                    self._action_mask_count = None
                 self.tried_positions.add((x, y))
 
                 layout_node = self.node_dict[preceding_nodes[0]]
@@ -274,6 +277,37 @@ class NanoPlacementEnv(gym.Env):
 
         info = {}
         return observation, reward, done, False, info
+
+    def _two_input_paths(self, source_1, source_2, target):
+        """Try one routing order, undoing temporary obstructions on failure."""
+        params = pyfiction.a_star_params()
+        params.crossings = True
+        path_1 = pyfiction.a_star(self.layout, source_1, target, params)
+        if not path_1:
+            return path_1, []
+        # Keep legacy behavior by default. Retrying must preserve existing marks,
+        # including occupied source/target tiles, before trying the other order.
+        temporary = (
+            [coordinate for coordinate in path_1 if not self.layout.is_obstructed_coordinate(coordinate)]
+            if self.routing_fallback
+            else path_1
+        )
+        for coordinate in temporary:
+            self.layout.obstruct_coordinate(coordinate)
+        path_2 = []
+        try:
+            path_2 = pyfiction.a_star(self.layout, source_2, target, params)
+        finally:
+            if not path_2:
+                for coordinate in temporary:
+                    self.layout.clear_obstructed_coordinate(coordinate)
+        if path_2:
+            if self.routing_fallback:
+                for coordinate in path_1:
+                    self.layout.obstruct_coordinate(coordinate)
+            for coordinate in path_2:
+                self.layout.obstruct_coordinate(coordinate)
+        return path_1, path_2
 
     def save_layout(self) -> None:
         """Creates cell layout and saves it as .svg for QCA and .dot for SiDB.
@@ -350,10 +384,11 @@ class NanoPlacementEnv(gym.Env):
         Additionally, checks termination criteria to stop current placement.
 
         :return:    Action masks"""
+        self._action_mask_count = None
         if self.current_node >= len(self.actions):
             return [True] * self.action_space.n
 
-        preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
+        preceding_nodes = self._preceding_nodes[self.current_node]
         possible_positions_nodes = np.ones([self.layout_width, self.layout_height], dtype=int)
 
         self.layout_mask_width = int(8 + ((self.current_node * (self.layout_width - 8)) / len(self.actions))) + 1
@@ -521,6 +556,14 @@ class NanoPlacementEnv(gym.Env):
         if not mask.any():
             self.placement_possible = False
             return [True] * len(mask)
+        if self.current_tries == 0:
+            # Only hand the count to the next step; feasibility is recomputed on every mask request.
+            self._action_mask_count = (
+                id(self.layout),
+                self.current_node,
+                self.current_tries,
+                int(np.count_nonzero(mask)),
+            )
         return mask.tolist()
 
     def calculate_reward(self, x: int, y: int, placed_node: bool) -> tuple[float, bool]:

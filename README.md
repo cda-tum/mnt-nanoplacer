@@ -94,6 +94,24 @@ src/mnt/nanoplacer/
 tests/                           Unit and integration tests
 ```
 
+## Search-performance experiments
+
+The environment reuses the current action-mask count when starting a routing attempt, avoiding a second feasibility scan of the same placement. Masks are still recalculated for every policy request; routing paths are not cached across layout changes. Existing rewards, observations, and default routing behavior are unchanged.
+
+To try routing the other input first when a two-input route is blocked, pass `routing_fallback=True` to `create_layout`, or `--routing-fallback` to the CLI. This is an **opt-in experiment**, not a guarantee of smaller layouts: the extra routing attempts can also cost time. Its checkpoints and TensorBoard logs are separate from normal runs. The browser interface keeps the default routing behavior.
+
+The repository includes a paired benchmark using the usual PPO settings:
+
+```console
+python scripts/benchmark_search.py --baseline-ref 80892fd \
+  --circuits trindade16/mux21 fontes18/cm82a_5 \
+  --seeds 42 43 44 --seconds 30 --output /tmp/nanoplacer-benchmark
+```
+
+It checks identical masked-action trajectories before comparing fresh, single-CPU-thread runs at equal wall-clock budgets. Results include dependency versions, source identity, throughput, verified layout quality, and actual deadline overruns. Run it on an otherwise idle machine. The baseline must be a trusted local Git revision; the comparison loads its environment implementation using the current checkout's utilities. The baseline at `80892fd` retains only its first complete candidate, so its reported quality is not the best of every completed episode. Reward-shaping experiments are not enabled by this change.
+
+To benchmark the routing experiment, add `--routing-fallback --trace-steps 0`. This changes the search, so identical-trajectory checks do not apply.
+
 ## References
 
 If you use NanoPlaceR in your work, please cite the following publications:
