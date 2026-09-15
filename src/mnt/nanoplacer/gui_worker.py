@@ -15,9 +15,22 @@ from stable_baselines3.common.callbacks import BaseCallback
 from mnt import pyfiction
 from mnt.nanoplacer.main import _save_checkpoint, create_layout
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
+from mnt.nanoplacer.placement_envs.utils.placement_utils import placement_node_count
 
 MAX_REPLAY_FRAMES = 128
 CHECKPOINT_INTERVAL = 60.0
+
+
+def circuit_size(connection, benchmark: str, function: str) -> None:
+    """Return circuit metadata without running native parsing in the GUI's interpreter."""
+    try:
+        try:
+            data = {"placement_nodes": placement_node_count(benchmark, function)}
+        except ValueError as exc:
+            data = {"error": str(exc)}
+        connection.send_bytes(json.dumps(data).encode())
+    finally:
+        connection.close()
 
 
 def _write_json(path: Path, value: dict) -> None:

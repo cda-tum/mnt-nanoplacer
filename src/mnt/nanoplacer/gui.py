@@ -18,8 +18,11 @@ import webbrowser
 import zipfile
 from contextlib import suppress
 from datetime import UTC, datetime
+from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
+from multiprocessing import get_context
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 try:
@@ -30,10 +33,10 @@ except ImportError as exc:
     msg = 'Install the browser interface with: python -m pip install "mnt.nanoplacer[gui]"'
     raise SystemExit(msg) from exc
 
+from mnt.nanoplacer.gui_worker import circuit_size
 from mnt.nanoplacer.placement_envs.utils import layout_dimensions
 from mnt.nanoplacer.placement_envs.utils.placement_utils import (
     MAX_TIMESTEPS,
-    placement_node_count,
     recommended_timesteps,
 )
 
@@ -42,6 +45,54 @@ TECHNOLOGIES = ("Gate-level", "QCA", "SiDB")
 MODEL_KEYS = ("benchmark", "function", "clocking_scheme", "technology", "layout_width", "layout_height")
 MAX_DIMENSION = 128
 FINISHED = {"completed", "cancelled", "failed"}
+_CIRCUIT_LOCK = threading.Lock()
+_CIRCUIT_TIMEOUT = 10
+
+
+@lru_cache(maxsize=128)
+def placement_node_count(benchmark: str, function: str) -> int:
+    """Keep native parsing outside the server process, where it can hold the GIL."""
+    # ponytail: one sizing process; precompute the catalog if cold lookup latency becomes a bottleneck.
+    deadline = monotonic() + _CIRCUIT_TIMEOUT
+    if not _CIRCUIT_LOCK.acquire(timeout=_CIRCUIT_TIMEOUT):
+        msg = "Circuit sizing is busy. Please select the circuit again in a moment."
+        raise BadRequest(msg)
+    try:
+        context = get_context("spawn")
+        receiver, sender = context.Pipe(duplex=False)
+        # Daemon children are also terminated if the GUI exits while a request is still pending.
+        worker = context.Process(target=circuit_size, args=(sender, benchmark, function), daemon=True)
+        try:
+            worker.start()
+            sender.close()
+            if not receiver.poll(max(0, deadline - monotonic())):
+                msg = f"Circuit sizing exceeded {_CIRCUIT_TIMEOUT} seconds. Choose a smaller circuit for the local GUI."
+                raise BadRequest(msg)
+            payload = receiver.recv_bytes(64 * 1024)
+        finally:
+            receiver.close()
+            sender.close()
+            if worker.pid is not None:
+                if worker.is_alive():
+                    worker.terminate()
+                worker.join()
+                worker.close()
+    except (OSError, EOFError) as exc:
+        msg = "Could not inspect this circuit. Check the local Python installation."
+        raise BadRequest(msg) from exc
+    finally:
+        _CIRCUIT_LOCK.release()
+    try:
+        data = json.loads(payload)
+        if isinstance(data, dict) and isinstance(data.get("error"), str):
+            raise BadRequest(data["error"])
+        nodes = data["placement_nodes"]
+        if type(nodes) is not int or nodes < 1:
+            raise ValueError
+    except (ValueError, KeyError, TypeError) as exc:
+        msg = "Could not read the circuit size returned by the worker."
+        raise BadRequest(msg) from exc
+    return nodes
 
 
 def _read_json(path: Path) -> dict[str, Any]:

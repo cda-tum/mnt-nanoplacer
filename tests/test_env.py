@@ -338,6 +338,50 @@ def test_action_masks_exclude_failed_route_position() -> None:
     assert masks[27] is False
 
 
+def test_failed_corner_placement_can_retry_and_complete(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    circuit = tmp_path / "and.v"
+    circuit.write_text("module top(a, b, f);\ninput a, b;\noutput f;\nassign f = a & b;\nendmodule\n")
+    network = pyfiction.read_technology_network(str(circuit))
+    with patch("mnt.pyfiction.read_technology_network", return_value=network):
+        retry_env = NanoPlacementEnv(
+            layout_width=4, layout_height=3, technology="Gate-level", optimize=False, verbose=0
+        )
+    retry_env.step(1)
+    retry_env.step(4)
+    retry_env.action_masks()
+    # Control the failure, not a native equal-cost A* route choice.
+    with patch.object(retry_env, "_two_input_paths", return_value=([], [])):
+        assert not retry_env.step(11)[2]
+    assert retry_env.current_tries == 1
+    masks = retry_env.action_masks()
+    assert retry_env.placement_possible
+    assert masks[5]
+    assert not masks[11]
+    retry_env.step(5)  # Adjacent to both inputs: no platform-dependent A* tie-breaking.
+    assert retry_env.current_node == 3
+    assert retry_env.action_masks()[7]
+    assert retry_env.step(7)[2]
+    assert retry_env.equivalent == "STRONG"
+
+
+def test_output_mask_keeps_routes_from_row_and_column_zero(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    circuit = tmp_path / "buffer.v"
+    circuit.write_text("module top(a, f);\ninput a;\noutput f;\nassign f = a;\nendmodule\n")
+    network = pyfiction.read_technology_network(str(circuit))
+    with patch("mnt.pyfiction.read_technology_network", return_value=network):
+        output_env = NanoPlacementEnv(
+            layout_width=4, layout_height=3, technology="Gate-level", optimize=False, verbose=0
+        )
+    output_env.step(0)
+    masks = output_env.action_masks()
+    assert all(masks[map_to_discrete(3, y, 4)] for y in range(3))
+    assert all(masks[map_to_discrete(x, 2, 4)] for x in range(4))
+    assert output_env.step(3)[2]
+    assert output_env.equivalent == "STRONG"
+
+
 def test_action_masks_allow_terminal_observation(env: NanoPlacementEnv) -> None:
     env.current_node = len(env.actions)
 

@@ -1,6 +1,6 @@
 """Compare a checked-out environment with a Git baseline, without changing training settings.
 
-Example: python scripts/benchmark_search.py --baseline-ref 80892fd --seconds 30 --output /tmp/search-benchmark
+Example: python scripts/benchmark_search.py --baseline-ref 80892fd --trace-steps 0 --seconds 30 --output /tmp/search-benchmark
 The timer includes PPO updates, but excludes model initialization. A native call or PPO
 update can overrun the deadline; actual elapsed time is always reported. Baselines
 80892fd and 0511ba1 retain only their first completed candidate, not every episode's best.
@@ -89,7 +89,8 @@ def verify_trace(baseline: type, candidate: type, circuit: str, seed: int, steps
             assert all(env.action_masks() == masks[0] for env in envs), (circuit, seed, step, "repeated mask")
             action = int(rng.choice(np.flatnonzero(masks[0])))
             transitions = [env.step(action) for env in envs]
-            assert transitions[0] == transitions[1], (circuit, seed, step, "reward/termination")
+            # Diagnostic info differs between versions; compare observations, rewards and termination.
+            assert transitions[0][:4] == transitions[1][:4], (circuit, seed, step, "reward/termination")
             states = [
                 (
                     layout_state(env),

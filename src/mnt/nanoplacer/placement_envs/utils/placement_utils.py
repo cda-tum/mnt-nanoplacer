@@ -98,6 +98,10 @@ def create_action_list(
         raise ValueError(msg)
     network = pyfiction.read_technology_network(str(path))
 
+    if any(network.is_constant(pre) for gate in network.gates() for pre in network.fanins(gate)):
+        msg = f"Benchmark {benchmark}/{function} contains constant-driven gates or outputs, which NanoPlaceR does not support"
+        raise ValueError(msg)
+
     pi_names = [network.get_name(pi) for pi in network.pis()]
     po_names = [network.get_output_name(network.po_index(po)) for po in network.pos()]
 

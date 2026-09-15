@@ -53,3 +53,8 @@ def test_create_action_list() -> None:
 def test_create_action_list_rejects_unknown_function() -> None:
     with pytest.raises(ValueError, match="EPFL/mux21 does not exist"):
         create_action_list("EPFL", "mux21")
+
+
+def test_constant_output_is_rejected_before_training() -> None:
+    with pytest.raises(ValueError, match="ISCAS85/c2670 contains constant-driven gates or outputs"):
+        create_action_list("ISCAS85", "c2670")
