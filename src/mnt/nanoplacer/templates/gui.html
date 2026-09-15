@@ -27,13 +27,20 @@
         <div>
           <p class="eyebrow">REINFORCEMENT LEARNING · PHYSICAL DESIGN</p>
           <h1 id="page-title">Small circuits.<br><span>New possibilities.</span></h1>
-          <p class="intro-copy">Let an agent explore placement and routing.<br class="desktop-break"> Watch the best layout emerge, one decision at a time.</p>
+          <p class="intro-copy">Let an agent explore placement and routing.<br class="desktop-break"> Compare experiments. Replay the improvements.</p>
         </div>
         <div class="intro-note"><span class="note-icon" aria-hidden="true">↗</span><p>Your machine.<br>Your experiment.<small>Runs and results stay local.</small></p></div>
       </section>
 
       <div id="message" class="message" role="alert" hidden></div>
       <noscript><p class="message">Enable JavaScript to configure a run and view layouts. The command-line NanoPlaceR interface remains available.</p></noscript>
+
+      <section class="history-card card" aria-labelledby="history-title">
+        <div class="history-heading"><div><p class="eyebrow">EXPERIMENT NOTEBOOK</p><h2 id="history-title">Pick up where you left off</h2></div><div class="history-actions"><label class="sr-only" for="run-history">View an experiment</label><select id="run-history"><option value="">Latest experiment</option></select><button id="repeat-settings" class="button subtle" type="button" disabled>Repeat settings</button><button id="continue-run" class="button subtle" type="button" disabled>Continue this run</button></div></div>
+        <p id="active-run-note" class="field-hint" role="status" hidden></p>
+        <p id="batch-summary" class="field-hint" role="status" hidden></p>
+        <details id="comparison-details"><summary>Compare experiments</summary><label class="check-row comparison-filter"><input id="matching-runs" type="checkbox" checked><span>Only matching experiments <small id="comparison-filter-hint">Match the selected run, or the settings in the form.</small></span></label><div id="comparison-summary" class="comparison-summary"></div><div class="comparison-scroll" tabindex="0" role="region" aria-label="Experiment comparison"><table class="comparison-table"><caption id="comparison-caption">Latest 10 matching runs.</caption><thead><tr><th scope="col">Run / circuit</th><th scope="col">Seed / training</th><th scope="col">Steps · actual / budget</th><th scope="col">Grid → result</th><th scope="col">Area</th><th scope="col">Wires / crossings</th><th scope="col">Verified</th><th scope="col">First solution</th><th scope="col">Elapsed</th></tr></thead><tbody id="comparison-body"></tbody></table></div></details>
+      </section>
 
       <div class="workspace-grid">
         <aside class="configuration card" aria-labelledby="configuration-title">
@@ -53,6 +60,7 @@
                 <div class="section-label"><span>Layout dimensions</span><span id="tile-count" class="mini-badge">— tiles</span></div>
                 <label class="check-row"><input id="minimum-dimensions" type="checkbox" checked><span>Use reported minimum dimensions</span></label>
                 <p id="dimension-hint" class="field-hint">A starting point from the published benchmark data, not a guaranteed result.</p>
+                <p id="dimension-warning" class="field-hint" role="status" hidden></p>
                 <div class="field-row">
                   <div class="field"><label for="layout-width">Width <span class="unit">tiles</span></label><input id="layout-width" name="layout_width" type="number" min="1" max="128" step="1" value="4" required></div>
                   <div class="field"><label for="layout-height">Height <span class="unit">tiles</span></label><input id="layout-height" name="layout_height" type="number" min="1" max="128" step="1" value="3" required></div>
@@ -61,17 +69,22 @@
 
               <div class="form-section">
                 <div class="section-label"><span>Training budget</span><span class="mini-badge">PPO agent</span></div>
+                <label class="check-row"><input id="automatic-time-steps" type="checkbox" checked><span>Automatic timestep budget</span></label>
+                <p id="network-hint" class="field-hint" aria-live="polite">Reading the input network to suggest a timestep budget…</p>
                 <div class="field-row">
-                  <div class="field"><label for="time-steps">Timesteps</label><input id="time-steps" name="time_steps" type="number" min="1" max="10000000" step="1" value="10000" required></div>
+                  <div class="field"><label for="time-steps">Timesteps</label><input id="time-steps" name="time_steps" type="number" min="1" max="10000000" step="1" value="10000" aria-describedby="network-hint budget-hint" disabled required></div>
                   <div class="field"><label for="seed">Random seed</label><input id="seed" name="seed" type="number" min="0" max="4294967295" step="1" value="42" required></div>
                 </div>
-                <p class="field-hint">A larger budget gives the agent more opportunities to find a complete layout.</p>
+                <div class="field"><label for="seed-count">Consecutive seeds <span class="unit">1–10 runs</span></label><input id="seed-count" name="seed_count" type="number" min="1" max="10" step="1" value="1" required></div>
+                <p id="budget-hint" class="field-hint">Timesteps per seed. Multiple seeds run sequentially on the same grid.</p>
+                <label class="check-row"><input id="stop-on-solution" type="checkbox"><span>Stop after a verified solution <small>Otherwise continue looking for a smaller, cleaner layout.</small></span></label>
                 <label class="check-row"><input id="optimize" type="checkbox" checked><span>Post-layout optimization <small id="optimize-hint">Available with 2DDWave.</small></span></label>
                 <label class="check-row"><input id="resume" type="checkbox" disabled><span>Resume saved model <small id="resume-hint">Available after a model has been saved. Settings must match.</small></span></label>
+                <button id="clear-resume-source" class="text-button" type="button" hidden>Use latest matching checkpoint instead</button>
               </div>
             </fieldset>
             <button id="start-button" class="button primary start-button" type="submit" disabled><span aria-hidden="true">▶</span> Start experiment</button>
-            <p class="local-footnote">One experiment at a time. You can stop a run and keep its available results.</p>
+            <p class="local-footnote">One agent at a time. Stop also cancels any remaining seeds; available results are kept.</p>
           </form>
         </aside>
 
@@ -88,8 +101,17 @@
               <div><span>Best placed</span><strong id="placed-value">—</strong></div>
             </div>
             <div class="run-bottom"><p id="run-outcome" role="status" aria-live="polite">No experiment started yet.</p><button id="cancel-button" class="button subtle danger" type="button" hidden>Stop run</button></div>
+            <dl class="quality-metrics" aria-label="Best retained layout quality"><div><dt>Grid → optimized</dt><dd id="quality-dimensions">—</dd></div><div><dt>Area · tiles</dt><dd id="quality-area">—</dd></div><div><dt>Wires / crossings</dt><dd id="quality-wires">—</dd></div><div><dt>First verified solution</dt><dd id="quality-first">—</dd></div></dl>
+            <p id="episode-summary" class="field-hint">Complete placement and verified equivalence are reported separately.</p>
+            <p id="target-result" class="target-result" hidden></p>
+            <p id="checkpoint-summary" class="field-hint" hidden></p>
             <details class="reward-details" open>
               <summary>Training statistics <span aria-hidden="true">⌄</span></summary>
+              <dl class="learning-metrics"><div><dt>PPO training epochs · this run</dt><dd id="ppo-epochs">—</dd></div><div><dt>Including previous training</dt><dd id="ppo-epochs-total">—</dd></div></dl>
+              <p id="learning-summary" class="field-hint">Training episodes are online exploration, not an independent policy evaluation.</p>
+              <div class="progress-heading"><span>Best observed placement</span><span id="placement-progress-value">—</span></div>
+              <progress id="placement-progress" max="100" value="0" aria-label="Best observed placement progress"></progress>
+              <p id="placement-summary" class="reward-summary">Placement progress is available after training starts.</p>
               <div class="reward-heading"><div><h3>Mean episode reward</h3><p>Rolling mean · latest 100 completed episodes</p></div><strong id="reward-value">—</strong></div>
               <div id="reward-chart-wrap" class="reward-chart-wrap">
                 <canvas id="reward-canvas" role="img" aria-label="Training reward curve" aria-describedby="reward-summary" hidden></canvas>
@@ -99,8 +121,8 @@
             </details>
           </section>
 
-          <section class="preview-card card" aria-labelledby="preview-title">
-            <div class="preview-heading"><div><p class="eyebrow">03 / DISCOVER</p><h2 id="preview-title">A place for every gate</h2></div><div class="view-controls" role="group" aria-label="Layout viewport"><button id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out (−)" disabled>−</button><button id="fit-view" type="button" title="Fit layout (0)" disabled>Fit</button><button id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in (+)" disabled>+</button></div></div>
+          <section id="preview-card" class="preview-card card" aria-labelledby="preview-title">
+            <div class="preview-heading"><div><p class="eyebrow">03 / DISCOVER</p><h2 id="preview-title">A place for every gate</h2></div><div class="view-controls" role="group" aria-label="Layout viewport"><button id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out (−)" disabled>−</button><button id="fit-view" type="button" title="Fit layout (0)" disabled>Fit</button><button id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in (+)" disabled>+</button><button id="fullscreen-view" type="button" aria-label="Fullscreen layout" title="Fullscreen layout" disabled>⛶</button><button id="export-png" type="button" title="Download the full layout as a high-resolution PNG" disabled>PNG ↓</button></div></div>
             <div id="canvas-wrap" class="canvas-wrap">
               <canvas id="layout-canvas" tabindex="0" role="img" aria-label="Read-only best layout preview" aria-describedby="canvas-help canvas-detail" hidden></canvas>
               <div id="preview-empty" class="preview-empty">
@@ -114,11 +136,12 @@
               </div>
               <span id="preview-kind" class="preview-kind" hidden>Best partial placement</span>
             </div>
+            <div id="replay-controls" class="replay-controls" hidden><button id="replay-play" class="button subtle" type="button" aria-label="Play saved improvements">Play</button><label class="sr-only" for="replay-frame">Saved layout improvement</label><input id="replay-frame" type="range" min="0" max="0" value="0" step="1"><button id="replay-live" class="button subtle" type="button">Latest</button><p id="replay-summary">Saved improvements, not individual agent actions.</p></div>
             <div class="preview-footer"><p id="canvas-detail" role="status" aria-live="polite">Gate-level preview · read-only</p><span id="preview-dimensions">—</span></div>
             <div class="canvas-legend" id="canvas-help"><span><i class="legend-line"></i> Ground layer</span><span><i class="legend-line upper"></i> Upper layer</span><span class="canvas-instructions">Drag to pan · scroll to zoom · arrow keys to pan · 0 to fit · click a tile for details</span></div>
           </section>
 
-          <section class="artifacts-card card" aria-labelledby="artifacts-title"><div class="artifact-heading"><div><p class="eyebrow">KEEP EXPLORING</p><h2 id="artifacts-title">Results &amp; diagnostics</h2></div><span id="file-count" class="mini-badge">0 files</span></div><p id="files-empty" class="field-hint">Available layouts, saved models and other outputs will appear here.</p><ul id="files-list" class="files-list"></ul><details class="log-details"><summary>Training log <span aria-hidden="true">⌄</span></summary><pre id="run-log" tabindex="0" aria-label="Training log">Logs will appear after a run starts.</pre></details></section>
+          <section class="artifacts-card card" aria-labelledby="artifacts-title"><div class="artifact-heading"><div><p class="eyebrow">KEEP EXPLORING</p><h2 id="artifacts-title">Results &amp; diagnostics</h2></div><span id="file-count" class="mini-badge">0 files</span></div><div id="experiment-exports" class="export-links" hidden><a id="export-experiment" class="button subtle" download>Experiment ZIP ↓</a><a id="export-rewards" class="button subtle" download>Rewards CSV ↓</a><a id="export-metadata" class="button subtle" download>Metadata JSON ↓</a></div><p id="files-empty" class="field-hint">Available layouts, saved models and other outputs will appear here.</p><ul id="files-list" class="files-list"></ul><details class="log-details"><summary>Training log <span aria-hidden="true">⌄</span></summary><pre id="run-log" tabindex="0" aria-label="Training log">Logs will appear after a run starts.</pre></details></section>
         </div>
       </div>
     </main>

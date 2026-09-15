@@ -77,9 +77,9 @@ def test_worker_reports_run_relative_progress_and_keeps_best_after_reset(
         callback.on_training_start({}, {})
         actions = (3, 6, 0, 1, 7, 2, 5, 8, 11) if complete else (3, 3)
         for action in actions:
-            _, _, done, _ = wrapped.step([action])
+            _, _, done, infos = wrapped.step([action])
             model.num_timesteps += 1
-            callback.update_locals({"dones": done})
+            callback.update_locals({"dones": done, "infos": infos})
             assert callback.on_step() is True
         assert env.current_node == 0
         assert json.loads((tmp_path / "status.json").read_text())["status"] == "running"
@@ -94,16 +94,80 @@ def test_worker_reports_run_relative_progress_and_keeps_best_after_reset(
     assert status["best_placed"] == (9 if complete else 1)
     assert status["total_nodes"] == 9
     assert status["solution_found"] is complete
+    assert status["verified_solution"] is complete
+    assert status["complete_candidate"] is complete
+    assert status["successful_episodes"] == int(complete)
+    assert status["complete_episodes"] == int(complete)
+    assert status["routing_failures"] == 0
     assert status["equivalent"] == ("STRONG" if complete else None)
     assert status["preview_revision"] == (9 if complete else 1)
     assert status["mean_reward"] is None  # Unmonitored test environments have no episode-return data.
     assert status["reward_window"] == 0
     assert status["reward_history"] == []
+    assert status["replay_count"] == (9 if complete else 1)
+    assert status["stop_reason"] == "budget"
+    if complete:
+        assert status["first_solution_time"] >= 0
+        assert status["best_metrics"]["area"] > 0
     preview = json.loads((tmp_path / "preview.json").read_text())
     assert len(preview["cells"]) >= status["best_placed"]
     assert (tmp_path / "layouts/layout.fgl").exists() is complete
     assert (tmp_path / "layouts/mux21_2DDWave_qca.svg").exists() is complete
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_replay_is_bounded_immutable_and_only_verified_candidates_are_exported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(gui_worker, "MAX_REPLAY_FRAMES", 4)
+    layout = pyfiction.cartesian_gate_layout((1, 0, 0), "2DDWave")
+    source = layout.create_pi("a", (0, 0, 0))
+    layout.create_po(source, "y", (1, 0, 0))
+    env = SimpleNamespace(
+        layout=layout,
+        clocking_scheme="2DDWave",
+        max_placed_nodes=2,
+        actions=[0, 1],
+        verified_solution=False,
+        equivalent="NO",
+        best_metrics={"width": 2, "height": 1, "area": 2, "wires": 0, "crossings": 0},
+        first_solution_time=None,
+        reported_dimensions=None,
+        target_reproduced=False,
+        target_equivalent=None,
+    )
+    callback = gui_worker._Progress(tmp_path)
+    callback.model = SimpleNamespace(_n_updates=20)
+    callback.baseline = 400
+    callback.epoch_baseline = 20
+    callback.num_timesteps = 400
+    callback.best(env)
+    first = (tmp_path / "replay/0.json").read_bytes()
+    assert callback.status["complete_candidate"] is True
+    assert callback.status["solution_found"] is False
+    assert not (tmp_path / "layouts").exists()
+    env.verified_solution = True
+    env.equivalent = "STRONG"
+    env.first_solution_time = 1.5
+    for step in range(2, 7):
+        callback.model._n_updates += 10
+        callback.num_timesteps = 400 + step - 1
+        callback.best(env)
+    assert (tmp_path / "replay/0.json").read_bytes() == first
+    assert json.loads(first)["metadata"]["timestep"] == 1
+    assert len(list((tmp_path / "replay").glob("*.json"))) == 4
+    assert callback.status["replay_count"] == 4
+    assert callback.status["replay_truncated"] is True
+    assert callback.status["solution_found"] is True
+    assert callback.status["first_solution_time"] == 1.5
+    assert callback.status["first_solution_timestep"] == 2
+    assert callback.status["first_solution_ppo_epochs"] == 10
+    assert callback.status["first_solution_ppo_epochs_total"] == 30
+    assert callback.status["ppo_epochs"] == 50
+    assert callback.status["ppo_epochs_total"] == 70
+    assert callback.status["best_metrics"] == env.best_metrics
+    assert json.loads((tmp_path / "preview.json").read_text())["metadata"]["timestep"] == 6
+    assert (tmp_path / "layouts/layout.fgl").exists()
 
 
 def test_cancel_stops_real_training_and_saves_a_loadable_checkpoint(
@@ -125,6 +189,9 @@ def test_cancel_stops_real_training_and_saves_a_loadable_checkpoint(
     assert status["mean_reward"] is None  # A partial episode is not a completed return.
     checkpoint = next((tmp_path / "models").glob("*.zip"))
     assert MaskablePPO.load(checkpoint).num_timesteps == 1
+    assert status["checkpoint"]["kind"] == "final"
+    assert status["checkpoint"]["timestep"] == status["checkpoint"]["total_timesteps"] == 1
+    assert status["ppo_epochs"] == status["ppo_epochs_total"] == 0
 
 
 def test_worker_failure_is_recorded_without_exposing_traceback(
@@ -143,6 +210,86 @@ def test_worker_failure_is_recorded_without_exposing_traceback(
     assert status["status"] == "failed"
     assert status["error"] == "Training failed. See worker.log for details."
     assert "private exception details" in capsys.readouterr().err
+
+
+def test_periodic_recovery_and_final_training_epochs_are_loadable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.json").write_text(json.dumps(CONFIG | {"time_steps": 16}))
+
+    def small_model(*args, **kwargs):
+        return MaskablePPO(*args, **(kwargs | {"n_steps": 8, "batch_size": 8, "n_epochs": 2}))
+
+    monkeypatch.setattr(main, "MaskablePPO", small_model)
+    monkeypatch.setattr(gui_worker, "CHECKPOINT_INTERVAL", 0)
+    assert gui_worker.run_worker(tmp_path) == 0
+    status = json.loads((tmp_path / "status.json").read_text())
+    assert status["ppo_epochs"] == status["ppo_epochs_total"] == 4
+    assert status["checkpoint"]["kind"] == "final"
+    assert status["checkpoint"]["ppo_epochs_total"] == 4
+    final = MaskablePPO.load(tmp_path / "models" / status["checkpoint"]["filename"])
+    recovery = MaskablePPO.load(tmp_path / "models/recovery.zip")
+    assert final.num_timesteps == recovery.num_timesteps == 16
+    assert final._n_updates == 4
+    assert recovery._n_updates == 2  # Last rollout collected, before its policy update.
+    assert status["placement_history"][0] == [0, 0, 9]
+    assert status["placement_history"][-1] == [16, status["best_placed"], 9]
+    assert not list((tmp_path / "models").glob("*.tmp"))
+
+    (tmp_path / "config.json").write_text(json.dumps(CONFIG | {"time_steps": 16, "resume": True}))
+    monkeypatch.setattr(main, "MaskablePPO", MaskablePPO)
+    assert gui_worker.run_worker(tmp_path) == 0
+    resumed = json.loads((tmp_path / "status.json").read_text())
+    assert resumed["timesteps"] == resumed["checkpoint"]["timestep"] == 16
+    assert resumed["checkpoint"]["total_timesteps"] == 32
+    assert resumed["ppo_epochs"] == 4
+    assert resumed["ppo_epochs_total"] == resumed["checkpoint"]["ppo_epochs_total"] == 8
+
+
+def test_failed_recovery_preserves_previous_checkpoint_and_metadata(tmp_path: Path, capsys) -> None:
+    callback = gui_worker._Progress(tmp_path)
+    callback.baseline = 80
+    callback.epoch_baseline = 20
+    callback.num_timesteps = 100
+    callback.model = SimpleNamespace(_n_updates=30, save=lambda archive: archive.write(b"saved"))
+    callback.last_checkpoint = 0
+    callback.save_recovery()
+    checkpoint = callback.status["checkpoint"].copy()
+    assert checkpoint["timestep"] == 20
+    assert checkpoint["total_timesteps"] == 100
+    assert checkpoint["ppo_epochs_total"] == 30
+
+    def failed_save(archive) -> None:
+        archive.write(b"incomplete")
+        msg = "private disk failure"
+        raise OSError(msg)
+
+    callback.model.save = failed_save
+    callback.num_timesteps += 1
+    callback.last_checkpoint = 0
+    callback.save_recovery()
+    assert (tmp_path / "models/recovery.zip").read_bytes() == b"saved"
+    assert callback.status["checkpoint"] == checkpoint
+    assert "private" not in callback.status["checkpoint_error"]
+    assert "private disk failure" in capsys.readouterr().err
+
+
+def test_placement_history_is_bounded_and_terminal_target_proof_is_not_lost(tmp_path: Path) -> None:
+    callback = gui_worker._Progress(tmp_path)
+    callback.status["total_nodes"] = 1000
+    for step in range(1001):
+        callback.status["best_placed"] = step
+        callback.placement_sample(step)
+        assert len(callback.status["placement_history"]) <= 256
+    history = callback.status["placement_history"]
+    assert history[0] == [0, 0, 1000]
+    assert history[-1] == [1000, 1000, 1000]
+    assert all(left[0] < right[0] for left, right in pairwise(history))
+    callback.update_locals({"dones": [True], "infos": [{"target_reproduced": True, "target_equivalent": "STRONG"}]})
+    callback._on_step()
+    assert callback.status["target_reproduced"] is True
+    assert callback.status["target_equivalent"] == "STRONG"
 
 
 def test_reward_uses_real_monitor_episode_return_and_resume_relative_axis(tmp_path: Path) -> None:

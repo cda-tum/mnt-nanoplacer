@@ -1,18 +1,34 @@
 from __future__ import annotations
 
 import argparse
+from os import fdopen
 from pathlib import Path
+from tempfile import mkstemp
 from typing import TYPE_CHECKING
 
 from sb3_contrib import MaskablePPO
+from stable_baselines3.common.callbacks import CallbackList, ConvertCallback
 
 from mnt.nanoplacer.placement_envs.nano_placement_env import NanoPlacementEnv
 from mnt.nanoplacer.placement_envs.utils import layout_dimensions
+from mnt.nanoplacer.placement_envs.utils.placement_utils import recommended_timesteps
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from stable_baselines3.common.callbacks import BaseCallback
+
+
+def _save_checkpoint(model: MaskablePPO, path: Path) -> None:
+    """Replace a checkpoint only after its complete archive has been written."""
+    descriptor, filename = mkstemp(dir=path.parent, prefix=f".{path.stem}-", suffix=".tmp")
+    temporary = Path(filename)
+    try:
+        with fdopen(descriptor, "wb") as archive:
+            model.save(archive)
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def create_layout(
@@ -23,7 +39,7 @@ def create_layout(
     minimal_layout_dimension: bool = True,
     layout_width: int = 3,
     layout_height: int = 4,
-    time_steps: int = 10000,
+    time_steps: int | None = None,
     reset_model: bool = True,
     verbose: int = 1,
     optimize: bool = True,
@@ -32,12 +48,16 @@ def create_layout(
     routing_fallback: bool = False,
     on_best: Callable[[NanoPlacementEnv], None] | None = None,
     callback: BaseCallback | None = None,
+    stop_on_solution: bool = False,
 ) -> None:
-    """Train a placer, optionally reporting best layouts before the environment resets.
+    """Train a placer; an omitted timestep budget scales with the number of placement nodes.
 
     routing_fallback experimentally retries blocked two-input routes in reverse order.
     It uses separate checkpoints so normal runs do not silently resume a changed search.
     """
+    if seed is not None and not 0 <= seed < 2**32:
+        msg = "Seed must be between 0 and 4294967295"
+        raise ValueError(msg)
     effective_clocking_scheme = "2DDWave" if technology.lower() == "sidb" else clocking_scheme
 
     for folder in (Path("layouts"), Path("models"), Path("tensorboard")):
@@ -65,6 +85,8 @@ def create_layout(
         routing_fallback=routing_fallback,
         **({"on_best": on_best} if on_best is not None else {}),
     )
+    if time_steps is None:
+        time_steps = recommended_timesteps(len(env.actions))
 
     routing_suffix = "_routing-fallback" if routing_fallback else ""
     model_path = Path("models") / (
@@ -93,6 +115,10 @@ def create_layout(
             model.set_random_seed(seed)
         reset_num_timesteps = False
 
+    if stop_on_solution:
+        stop_callback = ConvertCallback(lambda _locals, _globals: not env.verified_solution)
+        callback = CallbackList([callback, stop_callback]) if callback is not None else stop_callback
+
     model.learn(
         total_timesteps=time_steps,
         log_interval=1,
@@ -100,7 +126,7 @@ def create_layout(
         **({"callback": callback} if callback is not None else {}),
     )
 
-    model.save(model_path)
+    _save_checkpoint(model, model_path)
 
 
 def start() -> None:
@@ -165,8 +191,8 @@ def start() -> None:
         "--time-steps",
         "--time_steps",
         type=int,
-        default=10000,
-        help="Number of time steps to train the RL agent.",
+        default=None,
+        help="Training timesteps (default: 1,000 per placement node, minimum 10,000, maximum 10 million).",
     )
     parser.add_argument(
         "-r",
@@ -195,7 +221,15 @@ def start() -> None:
         action="store_true",
         help="Experimentally retry blocked two-input routes in reverse order; use a separate checkpoint.",
     )
+    parser.add_argument("--seed", type=int, help="Random seed for training and checkpoint resumption.")
+    parser.add_argument(
+        "--stop-on-solution",
+        action="store_true",
+        help="Stop training after the first equivalent layout and save the model checkpoint.",
+    )
     args = parser.parse_args()
+    if args.seed is not None and not 0 <= args.seed < 2**32:
+        parser.error("--seed must be between 0 and 4294967295")
     create_layout(
         benchmark=args.benchmark,
         function=args.function,
@@ -209,6 +243,8 @@ def start() -> None:
         verbose=args.verbose,
         optimize=args.optimize,
         routing_fallback=args.routing_fallback,
+        seed=args.seed,
+        stop_on_solution=args.stop_on_solution,
     )
 
 
