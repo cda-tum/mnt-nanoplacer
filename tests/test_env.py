@@ -130,6 +130,50 @@ def test_action_masks_are_plain_booleans(env: NanoPlacementEnv) -> None:
     assert any(masks)
 
 
+def test_step_reuses_mask_count_for_both_gate_arities(env: NanoPlacementEnv, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    for action in (3, 6, 0, 1, 7, 2, 5, 8, 11):
+        masks = env.action_masks()
+        gate_type = env.node_to_action[env.actions[env.current_node]]
+        with patch.object(env, "action_masks", wraps=env.action_masks) as calculate_mask:
+            env.step(action)
+        calculate_mask.assert_not_called()
+        if gate_type != "INPUT":
+            assert env.max_tries == sum(masks)
+        assert env._action_mask_count is None
+    assert env.equivalent == "STRONG"
+
+
+def test_direct_steps_recalculate_mask_count(env: NanoPlacementEnv) -> None:
+    for action in (3, 6, 0):
+        env.step(action)
+    for action in (1, 7):
+        with patch.object(env, "action_masks", wraps=env.action_masks) as calculate_mask:
+            env.step(action)
+        calculate_mask.assert_called_once()
+        assert env._action_mask_count is None
+
+
+def test_mask_count_is_invalidated_by_failed_step_and_reset(env: NanoPlacementEnv) -> None:
+    env.step(0)
+    env.action_masks()
+    assert env._action_mask_count is not None
+    assert env.step(0)[2]  # An occupied tile terminates without placing another node.
+    assert env._action_mask_count is None
+    env.action_masks()
+    env.reset()
+    assert env._action_mask_count is None
+    assert env.layout_mask_width == env.layout_mask_height == 4
+
+
+def test_repeated_mask_requests_recheck_mutated_placement(env: NanoPlacementEnv) -> None:
+    env.action_masks()
+    env.occupied_tiles.fill(1)
+    assert env.action_masks() == [True] * env.action_space.n
+    assert not env.placement_possible
+    assert env._action_mask_count is None
+
+
 def test_best_hook_precedes_partial_and_complete_vecenv_resets(
     env: NanoPlacementEnv, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

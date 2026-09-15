@@ -69,6 +69,7 @@ class NanoPlacementEnv(gym.Env):
             self.pi_names,
             self.po_names,
         ) = create_action_list(self.benchmark, self.function)
+        self._preceding_nodes = tuple(tuple(self.DG.predecessors(node)) for node in self.actions)
         self.observation_space = gym.spaces.Discrete(len(self.actions) + 1)
 
         self.action_space = gym.spaces.Discrete(self.layout_width * self.layout_height)
@@ -83,6 +84,7 @@ class NanoPlacementEnv(gym.Env):
         self.current_tries = 0
         self.max_tries = 0
         self.tried_positions: set[tuple[int, int]] = set()
+        self._action_mask_count: tuple[int, int, int, int] | None = None
         self.start = time()
         self.placement_times = []
         self.occupied_tiles = np.zeros([self.layout_width, self.layout_height], dtype=int)
@@ -121,6 +123,7 @@ class NanoPlacementEnv(gym.Env):
         self.last_pos = None
         self.max_tries = 0
         self.tried_positions.clear()
+        self._action_mask_count = None
         self.layout_mask_width = 4
         self.layout_mask_height = 4
 
@@ -143,7 +146,14 @@ class NanoPlacementEnv(gym.Env):
 
         x, y = map_to_multidiscrete(action, self.layout_width)
 
-        preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
+        preceding_nodes = self._preceding_nodes[self.current_node]
+        cached_count = self._action_mask_count
+        self._action_mask_count = None
+        mask_count = (
+            cached_count[3]
+            if cached_count is not None and cached_count[:3] == (id(self.layout), self.current_node, self.current_tries)
+            else None
+        )
 
         if not self.placement_possible or not self.layout.is_empty_tile((x, y)):
             done = True
@@ -160,7 +170,8 @@ class NanoPlacementEnv(gym.Env):
                 "XOR",
             ]:
                 if self.current_tries == 0:
-                    self.max_tries = sum(self.action_masks())
+                    self.max_tries = mask_count if mask_count is not None else sum(self.action_masks())
+                    self._action_mask_count = None
                 self.tried_positions.add((x, y))
 
                 layout_node_1 = self.node_dict[preceding_nodes[0]]
@@ -215,7 +226,8 @@ class NanoPlacementEnv(gym.Env):
                 "OUTPUT",
             ]:
                 if self.current_tries == 0:
-                    self.max_tries = sum(self.action_masks())
+                    self.max_tries = mask_count if mask_count is not None else sum(self.action_masks())
+                    self._action_mask_count = None
                 self.tried_positions.add((x, y))
 
                 layout_node = self.node_dict[preceding_nodes[0]]
@@ -350,10 +362,11 @@ class NanoPlacementEnv(gym.Env):
         Additionally, checks termination criteria to stop current placement.
 
         :return:    Action masks"""
+        self._action_mask_count = None
         if self.current_node >= len(self.actions):
             return [True] * self.action_space.n
 
-        preceding_nodes = list(self.DG.predecessors(self.actions[self.current_node]))
+        preceding_nodes = self._preceding_nodes[self.current_node]
         possible_positions_nodes = np.ones([self.layout_width, self.layout_height], dtype=int)
 
         self.layout_mask_width = int(8 + ((self.current_node * (self.layout_width - 8)) / len(self.actions))) + 1
@@ -521,6 +534,14 @@ class NanoPlacementEnv(gym.Env):
         if not mask.any():
             self.placement_possible = False
             return [True] * len(mask)
+        if self.current_tries == 0:
+            # Only hand the count to the next step; feasibility is recomputed on every mask request.
+            self._action_mask_count = (
+                id(self.layout),
+                self.current_node,
+                self.current_tries,
+                int(np.count_nonzero(mask)),
+            )
         return mask.tolist()
 
     def calculate_reward(self, x: int, y: int, placed_node: bool) -> tuple[float, bool]:
