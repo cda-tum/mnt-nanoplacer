@@ -438,8 +438,8 @@ class NanoPlacementEnv(gym.Env):
             if self.clocking_scheme.upper() == "2DDWAVE":
                 node = self.node_dict[preceding_nodes[0]]
                 loc = self.layout.get_tile(node)
-                possible_positions_nodes[self.layout_width - 1, loc.y - 1 : self.layout_mask_height] = 0
-                possible_positions_nodes[loc.x - 1 : self.layout_mask_width, self.layout_height - 1] = 0
+                possible_positions_nodes[self.layout_width - 1, max(0, loc.y - 1) : self.layout_mask_height] = 0
+                possible_positions_nodes[max(0, loc.x - 1) : self.layout_mask_width, self.layout_height - 1] = 0
             elif self.clocking_scheme.upper() in ("USE", "RES", "ESR"):
                 possible_positions_nodes[0, :] = 0
                 possible_positions_nodes[self.layout_width - 1, :] = 0
@@ -493,6 +493,9 @@ class NanoPlacementEnv(gym.Env):
                 possible_positions_nodes = np.zeros([self.layout_width, self.layout_height], dtype=int)
 
         for node in self.node_dict:
+            if self.current_tries and node == self.actions[self.current_node]:
+                # This unrouted placeholder will move on the next attempt; it is not a placed gate.
+                continue
             if (
                 not self.layout.is_po_tile(self.layout.get_tile(self.node_dict[node]))
                 and self.layout.fanout_size(self.node_dict[node]) == 0

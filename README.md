@@ -80,6 +80,8 @@ Choose a bundled circuit, technology and clocking scheme, then configure its gri
 
 The GUI, Python API, and CLI default to 1,000 timesteps per placement node, with a 10,000-step minimum and a 10-million-step cap. The count includes inputs, outputs, and fanout nodes after substitution: `mux21` has 9 nodes (10,000 steps), while `fontes18/parity` has 150 (150,000 steps). This is a size-based starting heuristic, not a measured minimum or a guarantee of success. Uncheck **Automatic timestep budget** in the GUI, pass `time_steps` in Python, or use `--time-steps` on the CLI to set your own budget. Saved runs retain their exact resolved budget. The GUI rejects grids with fewer tiles than placement nodes; additional space is usually needed for routing.
 
+GUI circuit sizing runs in a separate process with a 10-second timeout and caches successful results, keeping status and Stop controls responsive even while a large circuit is being parsed. Circuits with constant-driven gates or outputs (including `ISCAS85/c2670`) are currently unsupported and are rejected before training starts, rather than failing partway through placement.
+
 Training runs in a separate process, one run at a time per GUI instance. Select up to ten consecutive seeds to test the same dimensions with independent fresh agents. The timestep budget applies to each seed, and seeds run sequentially. Stop cancels the active run and the remaining queue, requesting a graceful checkpoint save; if a native operation prevents that, the worker is terminated after a short grace period. A finished training budget without a solution is reported honestly as such. PPO may finish its current rollout beyond the requested timestep budget.
 
 Run history lets you inspect previous results and compare seeds, layout quality, and time to a verified solution while another experiment continues. You can repeat a run's settings without changing its saved files. History survives a server restart; interrupted work is not automatically restarted. The training statistics panel plots the mean return of the latest 100 completed episodes (fewer at the start), with sampled history and timesteps relative to the current run. Separate quality metrics show dimensions before and after optimization, wires, crossings, and verified episode counts: reward itself is not an independent quality score.
@@ -114,19 +116,21 @@ tests/                           Unit and integration tests
 
 ## Search-performance experiments
 
-The environment reuses the current action-mask count when starting a routing attempt, avoiding a second feasibility scan of the same placement. Masks are still recalculated for every policy request; routing paths are not cached across layout changes. Existing rewards, observations, and default routing behavior are unchanged.
+Routing retries skip the current unrouted gate when checking whether already placed gates can still reach their destinations. Output masks also retain reachable border positions when their source lies on row or column zero. These correctness fixes can change search trajectories compared with older versions.
+
+The environment reuses the current action-mask count when starting a routing attempt, avoiding a second feasibility scan of the same placement. Masks are still recalculated for every policy request; routing paths are not cached across layout changes. Mask-count reuse does not alter rewards, observations, or routing order.
 
 To try routing the other input first when a two-input route is blocked, pass `routing_fallback=True` to `create_layout`, or `--routing-fallback` to the CLI. This is an **opt-in experiment**, not a guarantee of smaller layouts: the extra routing attempts can also cost time. Its checkpoints and TensorBoard logs are separate from normal runs. The browser interface keeps the default routing behavior.
 
 The repository includes a paired benchmark using the usual PPO settings:
 
 ```console
-python scripts/benchmark_search.py --baseline-ref 80892fd \
+python scripts/benchmark_search.py --baseline-ref 80892fd --trace-steps 0 \
   --circuits trindade16/mux21 fontes18/cm82a_5 \
   --seeds 42 43 44 --seconds 30 --output /tmp/nanoplacer-benchmark
 ```
 
-It checks identical masked-action trajectories before comparing fresh, single-CPU-thread runs at equal wall-clock budgets. Results include dependency versions, source identity, throughput, verified layout quality, and actual deadline overruns. Run it on an otherwise idle machine. The baseline must be a trusted local Git revision; the comparison loads its environment implementation using the current checkout's utilities. The baseline at `80892fd` retains only its first complete candidate, so its reported quality is not the best of every completed episode. Reward-shaping experiments are not enabled by this change.
+It compares fresh, single-CPU-thread runs at equal wall-clock budgets. Results include dependency versions, source identity, throughput, verified layout quality, and actual deadline overruns. Run it on an otherwise idle machine. The baseline must be a trusted local Git revision; the comparison loads its environment implementation using the current checkout's utilities. The baseline at `80892fd` predates routing/mask correctness fixes and retains only its first complete candidate, so neither identical trajectories nor best-of-every-episode quality is expected. Use `--trace-steps 0` for comparisons where search behavior intentionally differs. For behavior-preserving changes, omit that option to check identical masked-action trajectories; version-specific diagnostic fields are ignored, but observation, reward, termination, and layout differences still fail the check. Reward-shaping experiments are not enabled by this change.
 
 To benchmark the routing experiment, add `--routing-fallback --trace-steps 0`. This changes the search, so identical-trajectory checks do not apply.
 

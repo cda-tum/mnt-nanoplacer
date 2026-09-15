@@ -15,10 +15,13 @@ import pytest
 pytest.importorskip("flask")
 
 from mnt.nanoplacer import gui
+from mnt.nanoplacer.placement_envs.utils.placement_utils import placement_node_count
 
 
 @pytest.fixture
 def local_gui(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # Lifecycle checks mock the training process; sizing isolation is exercised separately below.
+    monkeypatch.setattr(gui, "placement_node_count", placement_node_count)
     app = gui.create_app(tmp_path / "runs")
     app.config["TESTING"] = True
     process = Mock()
@@ -115,6 +118,89 @@ def test_gui_circuit_details_reject_unbundled_paths(local_gui, monkeypatch, quer
     monkeypatch.setattr(gui, "placement_node_count", count)
     assert client.get("/api/circuit", query_string=query).status_code == 400
     count.assert_not_called()
+
+
+def test_gui_sizing_uses_a_real_worker_and_caches_the_result(tmp_path, monkeypatch) -> None:
+    gui.placement_node_count.cache_clear()
+    app = gui.create_app(tmp_path / "runs")
+    with app.test_client() as client:
+        response = client.get("/api/circuit?benchmark=trindade16&function=mux21")
+        assert response.status_code == 200
+        assert response.get_json() == {"placement_nodes": 9, "recommended_timesteps": 10000}
+        launch = Mock(side_effect=AssertionError("A cached circuit must not launch another worker"))
+        monkeypatch.setattr(gui, "get_context", launch)
+        assert client.get("/api/circuit?benchmark=trindade16&function=mux21").get_json() == response.get_json()
+        launch.assert_not_called()
+    gui.placement_node_count.cache_clear()
+
+
+def test_gui_reports_unsupported_constants_before_launching_training(tmp_path, monkeypatch) -> None:
+    app = gui.create_app(tmp_path / "runs")
+    launch = Mock()
+    monkeypatch.setattr(app.extensions["nanoplacer_runs"], "launch", launch)
+    with app.test_client() as client:
+        home = client.get("/").get_data(as_text=True)
+        token = re.search(r'name="csrf-token" content="([^"]+)"', home)[1]
+        config = {
+            "benchmark": "ISCAS85",
+            "function": "c2670",
+            "minimal_layout_dimension": False,
+            "layout_width": 128,
+            "layout_height": 128,
+            "time_steps": 100,
+        }
+        response = client.post("/api/start", json=config, headers={"X-Nanoplacer-Token": token})
+        assert response.status_code == 400
+        assert "constant-driven" in response.get_json()["error"]
+    launch.assert_not_called()
+    assert not list((tmp_path / "runs").iterdir())
+
+
+def test_slow_circuit_sizing_does_not_block_status_or_cancel(tmp_path, monkeypatch) -> None:
+    gui.placement_node_count.cache_clear()
+    app = gui.create_app(tmp_path / "runs")
+    started = threading.Event()
+    responses = []
+    monkeypatch.setattr(gui, "_CIRCUIT_TIMEOUT", 2)
+
+    native_context = gui.get_context
+    workers = []
+
+    def track_context(method):
+        context = native_context(method)
+        process = context.Process
+
+        def track_worker(*args, **kwargs):
+            worker = process(*args, **kwargs)
+            workers.append(worker)
+            started.set()
+            return worker
+
+        return Mock(Pipe=context.Pipe, Process=track_worker)
+
+    monkeypatch.setattr(gui, "get_context", track_context)
+
+    def request_size():
+        with app.test_client() as client:
+            responses.append(client.get("/api/circuit?benchmark=EPFL&function=hyp"))
+
+    sizing = threading.Thread(target=request_size)
+    sizing.start()
+    try:
+        assert started.wait(2)
+        with app.test_client() as client:
+            home = client.get("/").get_data(as_text=True)
+            token = re.search(r'name="csrf-token" content="([^"]+)"', home)[1]
+            assert client.get("/api/status").status_code == 200
+            assert client.post("/api/cancel", json={}, headers={"X-Nanoplacer-Token": token}).status_code == 200
+    finally:
+        sizing.join(5)
+    assert not sizing.is_alive()
+    assert responses[0].status_code == 400
+    assert "exceeded 2 seconds" in responses[0].get_json()["error"]
+    assert workers[0]._closed
+    assert gui._CIRCUIT_LOCK.acquire(blocking=False)
+    gui._CIRCUIT_LOCK.release()
 
 
 @pytest.mark.parametrize("flag", [{}, {"automatic_time_steps": False}, {"automatic_time_steps": True}])
