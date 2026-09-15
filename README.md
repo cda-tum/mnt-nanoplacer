@@ -43,10 +43,12 @@ create_layout(
     minimal_layout_dimension=False,
     layout_width=3,
     layout_height=4,
-    time_steps=10_000,
+    time_steps=None,  # Automatic network-size budget; set an integer to override.
     reset_model=True,
     verbose=1,
     optimize=True,
+    seed=42,
+    stop_on_solution=True,
 )
 ```
 
@@ -56,10 +58,12 @@ Or use the command-line interface:
 mnt.nanoplacer --help
 mnt.nanoplacer --benchmark trindade16 --function mux21 \
   --clocking-scheme 2DDWave --technology Gate-level \
-  --minimal-layout-dimension --time-steps 10000 --verbose 1
+  --minimal-layout-dimension --seed 42 --verbose 1
 ```
 
 Runs store generated layouts in `layouts/`, trained agents in `models/`, and TensorBoard data in `tensorboard/`. By default, the CLI resumes a matching saved model when one exists; pass `--reset-model` to train from scratch.
+
+Pass `--stop-on-solution` (or `stop_on_solution=True` in Python) to stop after the first equivalent layout and save the checkpoint. Otherwise training continues, retaining equivalent solutions that improve area, then wire count, then crossing count. Complete candidates are checked for equivalence before they can replace solution exports. Both strong and weak equivalence count as verified; weak equivalence permits different timing. This does not change the agent's reward function.
 
 ## Browser interface
 
@@ -72,11 +76,25 @@ mnt.nanoplacer.gui
 
 The interface opens at `http://127.0.0.1:5056`. Use `--port 5057` to choose another port, `--no-browser` to suppress automatic opening, or `--runs-dir PATH` to choose where experiments are saved.
 
-Choose a bundled circuit, technology and clocking scheme, then configure its grid, random seed and training budget. The canvas shows the best partial placement, including the actual clock phases; completed solutions are identified separately. SiDB uses 2DDWave during training and converts its output to a hexagonal layout. Optimization is available for 2DDWave only. Predefined minimum dimensions are experimental targets, not a guarantee that every seed or budget will find a solution.
+Choose a bundled circuit, technology and clocking scheme, then configure its grid, random seed and training budget. The canvas shows the best partial placement, including the actual clock phases; complete candidates and verified solutions are identified separately. SiDB uses 2DDWave during training and converts its output to a hexagonal layout. Optimization is available for 2DDWave only. Predefined minimum dimensions are experimental targets, not a guarantee that every seed or budget will find a solution.
 
-Training runs in a separate process, one run at a time per GUI instance. Reloading the page restores its current progress. The training statistics panel plots the mean return of the latest 100 completed episodes (fewer at the start), with sampled history and timesteps relative to the current run. It shows the agent's training reward, not an independent layout-quality score. Cancel requests a graceful stop and checkpoint save; if a native operation prevents that, the worker is terminated after a short grace period. Earlier run folders are preserved. A finished training budget without a solution is reported honestly as such. PPO may finish its current rollout beyond the requested timestep budget.
+The GUI, Python API, and CLI default to 1,000 timesteps per placement node, with a 10,000-step minimum and a 10-million-step cap. The count includes inputs, outputs, and fanout nodes after substitution: `mux21` has 9 nodes (10,000 steps), while `fontes18/parity` has 150 (150,000 steps). This is a size-based starting heuristic, not a measured minimum or a guarantee of success. Uncheck **Automatic timestep budget** in the GUI, pass `time_steps` in Python, or use `--time-steps` on the CLI to set your own budget. Saved runs retain their exact resolved budget. The GUI rejects grids with fewer tiles than placement nodes; additional space is usually needed for routing.
 
-Each run has its own folder under `nanoplacer-runs/`, with configuration, log, previews, generated layouts and a saved agent. Downloads become available when the worker stops writing its outputs. The resume option copies the latest compatible agent into a new run; circuit, technology, clocking scheme and grid size must match. Only checkpoints in local run folders are accepted; never add untrusted model files to them. Gate-level FGL output is also kept for complete solutions alongside the selected technology's usual output. Downloaded layouts can be opened in other MNT tools where their topology and clocking scheme are supported.
+Training runs in a separate process, one run at a time per GUI instance. Select up to ten consecutive seeds to test the same dimensions with independent fresh agents. The timestep budget applies to each seed, and seeds run sequentially. Stop cancels the active run and the remaining queue, requesting a graceful checkpoint save; if a native operation prevents that, the worker is terminated after a short grace period. A finished training budget without a solution is reported honestly as such. PPO may finish its current rollout beyond the requested timestep budget.
+
+Run history lets you inspect previous results and compare seeds, layout quality, and time to a verified solution while another experiment continues. You can repeat a run's settings without changing its saved files. History survives a server restart; interrupted work is not automatically restarted. The training statistics panel plots the mean return of the latest 100 completed episodes (fewer at the start), with sampled history and timesteps relative to the current run. Separate quality metrics show dimensions before and after optimization, wires, crossings, and verified episode counts: reward itself is not an independent quality score.
+
+Comparison can be restricted to matching circuit, clocking, technology, grid, budget, optimization, stopping, and fresh/resumed settings. Recorded circuit hashes, software versions, and source checkpoints keep different experiment conditions separate. The table shows requested and actual timesteps. Seed summaries count distinct seeds from completed fresh runs; repeated seeds, resumed runs, failures, cancellations, and unfinished runs are identified separately rather than pooled into an apparent success rate.
+
+For new runs, **Reported target reproduced** requires a verified layout on the exact reported width and height **before** post-layout optimization. The unoptimized proof is saved as `*_reported_target.fgl`; a smaller optimized layout obtained from a different starting grid does not establish this result. Older runs without this evidence are marked unknown. Learning statistics also show best placement progress and PPO training epochs, both for this run and over the checkpoint's lifetime. These epochs are not individual optimizer steps. A fresh agent can find a solution before any PPO training has occurred; the first-solution timestep and epoch count make that distinction visible. Episode success is measured during training, not on an independent evaluation set.
+
+Replay shows up to 128 sampled best-placement improvements, not every action or episode. Its immutable milestones can be inspected with a slider or played back; Live always returns to the latest best layout, even after recording reaches its limit. Expand the canvas for inspection or export a lossless PNG of the full layout, independent of the current pan and zoom.
+
+Each run has its own folder under `nanoplacer-runs/`, with configuration, a reproducibility manifest, log, previews, generated layouts and a saved agent. The manifest records the Python/package versions, circuit hash, and source checkpoint identity and hash when resuming. Downloads become available when the worker stops writing its outputs: individual layouts/models, sampled reward CSV, metadata, or an experiment ZIP. A seed and manifest help reproduce experiments, but do not guarantee identical results across different software versions or hardware.
+
+**Continue this run** copies a checkpoint from the selected experiment into a new run. Set the additional timestep budget and press Start; the source files stay unchanged. The general resume option still selects the latest compatible agent when no source run is specified. Circuit, technology, clocking scheme and grid size must match; changed circuit hashes or software versions produce a warning. Multi-seed experiments always start fresh. Only checkpoints in local run folders are accepted; never add untrusted model files to them.
+
+During GUI training, one `models/recovery.zip` is atomically replaced approximately every 60 seconds, and a final checkpoint is saved on normal completion or graceful cancellation. A failed or interrupted save leaves the previous checkpoint intact. Long native operations can delay recovery saves, and resumption starts a new episode rather than replaying an interrupted rollout exactly. Checkpoint status and save failures are shown in the interface. Gate-level FGL output is also kept for verified solutions alongside the selected technology's usual output. Downloaded layouts can be opened in other MNT tools where their topology and clocking scheme are supported. Old run folders remain readable, but metrics or replay frames not recorded by earlier versions are unavailable.
 
 This is a **local workstation interface**, bound to loopback, not a multi-user hosted service. It supports bundled benchmarks, grids up to 128 × 128, and budgets up to 10 million timesteps. The Python API and original CLI remain available without the GUI dependency.
 

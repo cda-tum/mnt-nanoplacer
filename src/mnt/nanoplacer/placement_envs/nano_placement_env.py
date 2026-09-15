@@ -8,7 +8,7 @@ import gymnasium as gym
 import numpy as np
 
 from mnt import pyfiction
-from mnt.nanoplacer.placement_envs.utils import create_action_list, map_to_multidiscrete
+from mnt.nanoplacer.placement_envs.utils import create_action_list, layout_dimensions, map_to_multidiscrete
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -96,6 +96,14 @@ class NanoPlacementEnv(gym.Env):
         self.routing_fallback = routing_fallback
         self.on_best = on_best
         self.equivalent: str | None = None
+        self.verified_solution = False
+        self.best_metrics: dict[str, int] = {}
+        self.first_solution_time: float | None = None
+        self._candidate_verified = False
+        dimensions = layout_dimensions.get(self.clocking_scheme, {}).get(benchmark, {}).get(function)
+        self.reported_dimensions = list(dimensions) if dimensions else None
+        self.target_reproduced = False
+        self.target_equivalent: str | None = None
 
     def reset(self, seed: int | None = None, options: dict[str, object] | None = None) -> tuple[int, dict[str, object]]:  # noqa: ARG002
         """Creates a new empty layout and resets all placement variables.
@@ -128,6 +136,7 @@ class NanoPlacementEnv(gym.Env):
         self._action_mask_count = None
         self.layout_mask_width = 4
         self.layout_mask_height = 4
+        self._candidate_verified = False
 
         return observation, {}
 
@@ -275,7 +284,17 @@ class NanoPlacementEnv(gym.Env):
 
         observation = self.current_node
 
-        info = {}
+        info = (
+            {
+                "complete_candidate": self.current_node == len(self.actions),
+                "verified": self._candidate_verified,
+                "routing_failed": not self.placement_possible and self.current_node < len(self.actions),
+                "target_reproduced": self.target_reproduced,
+                "target_equivalent": self.target_equivalent,
+            }
+            if done
+            else {}
+        )
         return observation, reward, done, False, info
 
     def _two_input_paths(self, source_1, source_2, target):
@@ -580,30 +599,68 @@ class NanoPlacementEnv(gym.Env):
         if placed_node and self.clocking_scheme.upper() == "2DDWAVE":
             reward *= 1 - ((x + y) / (self.layout_mask_width * self.layout_mask_height))
 
-        done = bool(self.current_node == len(self.actions) or not self.placement_possible)
-        if self.current_node > self.max_placed_nodes:
+        complete = self.current_node == len(self.actions)
+        done = bool(complete or not self.placement_possible)
+        improved = self.current_node > self.max_placed_nodes
+        metrics = {}
+        equivalent = None
+        if complete:
+            initial_width, initial_height = self.layout.x() + 1, self.layout.y() + 1
+            target_equivalent = None
+            if not self.target_reproduced and self.reported_dimensions == [initial_width, initial_height]:
+                # A smaller optimized result alone does not prove the reported starting grid.
+                stats = pyfiction.equivalence_checking_stats()
+                target_equivalent = pyfiction.equivalence_checking(self.layout, self.network, stats).name
+                if target_equivalent in {"STRONG", "WEAK"}:
+                    output = Path("layouts")
+                    output.mkdir(parents=True, exist_ok=True)
+                    target = output / f"{self.function}_{self.clocking_scheme}_reported_target.fgl"
+                    temporary = target.with_suffix(".tmp.fgl")
+                    pyfiction.write_fgl_layout(self.layout, str(temporary))
+                    temporary.replace(target)
+                    self.target_reproduced = True
+                    self.target_equivalent = target_equivalent
+            if self.optimize:
+                pyfiction.post_layout_optimization(self.layout)
+            if target_equivalent is not None and not self.optimize:
+                equivalent = target_equivalent
+            else:
+                stats = pyfiction.equivalence_checking_stats()
+                equivalent = pyfiction.equivalence_checking(self.layout, self.network, stats).name
+            self._candidate_verified = equivalent in {"STRONG", "WEAK"}
+            metrics = {
+                "width": self.layout.x() + 1,
+                "height": self.layout.y() + 1,
+                "area": (self.layout.x() + 1) * (self.layout.y() + 1),
+                "wires": self.layout.num_wires(),
+                "crossings": self.layout.num_crossings(),
+                "initial_width": initial_width,
+                "initial_height": initial_height,
+                "initial_area": initial_width * initial_height,
+            }
+            if self._candidate_verified:
+                if self.first_solution_time is None:
+                    self.first_solution_time = time() - self.start
+                improved = not self.verified_solution or tuple(
+                    metrics[key] for key in ("area", "wires", "crossings")
+                ) < tuple(self.best_metrics[key] for key in ("area", "wires", "crossings"))
+            else:
+                improved = improved and not self.verified_solution
+            if self.verbose:
+                print(f"Complete candidate after {time() - self.start:.2f}s; equivalence: {equivalent}")
+
+        if improved:
             if self.verbose:
                 print(f"New best placement: {self.current_node}/{len(self.actions)} ({time() - self.start:.2f}s)")
             if self.verbose == 1:
                 print(self.layout)
             self.max_placed_nodes = self.current_node
             self.placement_times.append(time() - self.start)
-            if self.current_node == len(self.actions):
-                if self.verbose:
-                    print(f"Found solution after {time() - self.start:.2f}s")
-                if self.optimize:
-                    if self.verbose:
-                        print(f"Dimension before optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
-                    pyfiction.post_layout_optimization(self.layout)
-                    if self.verbose:
-                        print(self.layout)
-                        print(f"Dimension after optimization: {self.layout.x() + 1} x {self.layout.y() + 1}")
+            self.equivalent = equivalent
+            self.best_metrics = metrics
+            if complete and self._candidate_verified:
+                self.verified_solution = True
                 self.save_layout()
-                stats = pyfiction.equivalence_checking_stats()
-                eq = pyfiction.equivalence_checking(self.layout, self.network, stats)
-                self.equivalent = eq.name
-                if self.verbose:
-                    print(f"Equivalent: {eq}")
             if self.on_best is not None:
                 # VecEnv resets terminal layouts immediately after step(), so snapshot here.
                 self.on_best(self)

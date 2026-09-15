@@ -1,5 +1,6 @@
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
 from gymnasium.utils.env_checker import check_env
@@ -108,10 +109,20 @@ def test_place_and_serialize_mux(env: NanoPlacementEnv, tmp_path: Path, monkeypa
 
     for action in (3, 6, 0, 1, 7, 2, 5, 8):
         env.step(action)
-    _, reward, terminated, _, _ = env.step(11)
+    _, reward, terminated, _, info = env.step(11)
 
     assert reward > 1000
     assert terminated is True
+    assert info == {
+        "complete_candidate": True,
+        "verified": True,
+        "routing_failed": False,
+        "target_reproduced": False,
+        "target_equivalent": None,
+    }
+    assert env.verified_solution
+    assert env.first_solution_time is not None
+    assert env.best_metrics["area"] <= env.best_metrics["initial_area"]
     assert (tmp_path / "layouts/mux21_ONE_2DDWave_NanoPlaceR_Opt_UnOrd_area.fgl").is_file()
 
     env.technology = "QCA"
@@ -173,6 +184,41 @@ def test_repeated_mask_requests_recheck_mutated_placement(env: NanoPlacementEnv)
     assert env.action_masks() == [True] * env.action_space.n
     assert not env.placement_possible
     assert env._action_mask_count is None
+
+
+def test_reported_target_is_verified_and_saved_before_optimization(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    target_env = NanoPlacementEnv(technology="Gate-level", layout_width=4, layout_height=3, verbose=0)
+    for action in (1, 2, 0, 4, 6, 8, 9, 10, 11):
+        target_env.step(action)
+    assert target_env.reported_dimensions == [4, 3]
+    assert target_env.target_reproduced
+    assert target_env.target_equivalent == "STRONG"
+    target_file = tmp_path / "layouts/mux21_2DDWave_reported_target.fgl"
+    layout = pyfiction.read_cartesian_fgl_layout(str(target_file))
+    assert (layout.x() + 1, layout.y() + 1) == (4, 3)
+    assert pyfiction.equivalence_checking(layout, target_env.network).name == "STRONG"
+    target_env.reset()
+    assert target_env.target_reproduced, "Later episodes must not erase a proven target."
+
+
+def test_optimized_success_does_not_prove_an_unverified_reported_grid(env, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    env.current_node = len(env.actions)
+    env.reported_dimensions = [3, 4]
+    with (
+        patch(
+            "mnt.pyfiction.equivalence_checking",
+            side_effect=[SimpleNamespace(name="NO"), SimpleNamespace(name="STRONG")],
+        ),
+        patch("mnt.pyfiction.post_layout_optimization"),
+        patch.object(env, "save_layout"),
+    ):
+        env.calculate_reward(0, 0, placed_node=True)
+    assert env.verified_solution
+    assert not env.target_reproduced
+    assert env.target_equivalent is None
+    assert not list(tmp_path.glob("layouts/*reported_target*"))
 
 
 def test_best_hook_precedes_partial_and_complete_vecenv_resets(
@@ -377,3 +423,86 @@ def test_calculate_reward_is_deterministic_and_quiet(env: NanoPlacementEnv, caps
     assert reward == 1.0
     assert terminated is False
     assert capsys.readouterr().out == ""
+
+
+def test_later_verified_candidates_improve_area_then_wires_then_crossings(env: NanoPlacementEnv) -> None:
+    env.current_node = len(env.actions)
+    env.layout = Mock()
+    env.layout.x.return_value = 3
+    env.layout.y.return_value = 3
+    env.layout.num_wires.return_value = 8
+    env.layout.num_crossings.return_value = 2
+    snapshots = []
+    env.on_best = lambda current: snapshots.append(dict(current.best_metrics))
+    with (
+        patch("mnt.pyfiction.post_layout_optimization"),
+        patch("mnt.pyfiction.equivalence_checking", return_value=SimpleNamespace(name="STRONG")) as equivalence,
+        patch.object(env, "save_layout") as save,
+    ):
+        env.calculate_reward(0, 0, placed_node=True)
+        first_solution_time = env.first_solution_time
+        env.layout.x.return_value = 2
+        env.calculate_reward(0, 0, placed_node=True)
+        env.layout.num_wires.return_value = 7
+        env.calculate_reward(0, 0, placed_node=True)
+        env.layout.num_crossings.return_value = 1
+        env.calculate_reward(0, 0, placed_node=True)
+        # Equal or worse candidates are still checked, but cannot overwrite the best export.
+        env.calculate_reward(0, 0, placed_node=True)
+        env.layout.num_wires.return_value = 9
+        env.calculate_reward(0, 0, placed_node=True)
+
+    assert equivalence.call_count == 6
+    assert save.call_count == 4
+    assert [(m["area"], m["wires"], m["crossings"]) for m in snapshots] == [
+        (16, 8, 2),
+        (12, 8, 2),
+        (12, 7, 2),
+        (12, 7, 1),
+    ]
+    assert env.first_solution_time == first_solution_time
+    assert env.verified_solution
+
+
+def test_failed_equivalence_never_exports_or_hides_later_verified_solution(env: NanoPlacementEnv) -> None:
+    env.current_node = len(env.actions)
+    env.optimize = False
+    snapshots = []
+    env.on_best = lambda current: snapshots.append((current.equivalent, current.verified_solution))
+    with (
+        patch(
+            "mnt.pyfiction.equivalence_checking",
+            side_effect=[SimpleNamespace(name=name) for name in ("NO", "WEAK", "NO")],
+        ),
+        patch.object(env, "save_layout") as save,
+    ):
+        env.calculate_reward(0, 0, placed_node=True)
+        assert not env.verified_solution
+        assert env.first_solution_time is None
+        save.assert_not_called()
+        env.reset()
+        env.current_node = len(env.actions)
+        env.calculate_reward(0, 0, placed_node=True)
+        env.reset()
+        assert env.verified_solution
+        env.current_node = len(env.actions)
+        env.calculate_reward(0, 0, placed_node=True)
+
+    save.assert_called_once()
+    assert snapshots == [("NO", False), ("WEAK", True)]
+    assert env.equivalent == "WEAK"
+    assert env.verified_solution
+    assert not env._candidate_verified
+
+
+def test_terminal_info_distinguishes_routing_failure(env: NanoPlacementEnv) -> None:
+    env.placement_possible = False
+    _, _, terminated, _, info = env.step(0)
+    assert terminated
+    assert info == {
+        "complete_candidate": False,
+        "verified": False,
+        "routing_failed": True,
+        "target_reproduced": False,
+        "target_equivalent": None,
+    }

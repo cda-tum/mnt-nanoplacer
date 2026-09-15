@@ -3,8 +3,9 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from stable_baselines3.common.callbacks import ConvertCallback
 
-from mnt.nanoplacer.main import create_layout, start
+from mnt.nanoplacer.main import _save_checkpoint, create_layout, start
 
 
 def test_create_layout_starts_and_saves_a_new_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,7 +29,8 @@ def test_create_layout_starts_and_saves_a_new_model(tmp_path: Path, monkeypatch:
         tensorboard_log=str(Path("tensorboard") / "Gate-level_trindade16_mux21_2DDWave_3x4"),
     )
     model.learn.assert_called_once_with(total_timesteps=42, log_interval=1, reset_num_timesteps=True)
-    model.save.assert_called_once_with(Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip"))
+    model.save.assert_called_once()
+    assert Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip").exists()
     assert all((tmp_path / directory).is_dir() for directory in ("layouts", "models", "tensorboard"))
 
 
@@ -50,7 +52,28 @@ def test_create_layout_resumes_the_saved_model(tmp_path: Path, monkeypatch: pyte
     ppo.assert_not_called()
     ppo.load.assert_called_once_with(model_path, env=env)
     model.learn.assert_called_once_with(total_timesteps=42, log_interval=1, reset_num_timesteps=False)
-    model.save.assert_called_once_with(model_path)
+    model.save.assert_called_once()
+    assert model_path.exists()
+
+
+@pytest.mark.parametrize(("nodes", "expected"), [(9, 10_000), (26, 26_000), (10_001, 10_000_000)])
+def test_create_layout_defaults_to_network_size(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, nodes: int, expected: int
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv", return_value=Mock(actions=range(nodes))),
+        patch("mnt.nanoplacer.main.MaskablePPO") as ppo,
+    ):
+        create_layout()
+    assert ppo.return_value.learn.call_args.kwargs["total_timesteps"] == expected
+
+
+def test_cli_defaults_to_automatic_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["mnt.nanoplacer"])
+    with patch("mnt.nanoplacer.main.create_layout") as create:
+        start()
+    assert create.call_args.kwargs["time_steps"] is None
 
 
 @pytest.mark.parametrize("resume", [False, True])
@@ -81,7 +104,8 @@ def test_optional_seed_and_gui_hooks(tmp_path: Path, monkeypatch: pytest.MonkeyP
     model.learn.assert_called_once_with(
         total_timesteps=8, log_interval=1, reset_num_timesteps=not resume, callback=callback
     )
-    model.save.assert_called_once_with(model_path)
+    model.save.assert_called_once()
+    assert model_path.exists()
 
 
 def test_create_layout_uses_iscas85_dimensions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -122,7 +146,62 @@ def test_routing_fallback_uses_separate_checkpoints(
         ppo.load.assert_not_called()
         assert ppo.call_args.kwargs["tensorboard_log"].endswith("3x4_routing-fallback")
         model = ppo.return_value
-    model.save.assert_called_once_with(fallback)
+    model.save.assert_called_once()
+    assert fallback.is_file()
+
+
+@pytest.mark.parametrize("with_callback", [False, True])
+def test_stop_on_verified_solution_preserves_callback_and_checkpoint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, with_callback: bool
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    env = Mock(verified_solution=False, actions=range(9))
+    on_step = Mock(return_value=True)
+    callback = ConvertCallback(on_step) if with_callback else None
+    model = Mock(num_timesteps=0)
+
+    def learn(**kwargs: object) -> None:
+        training_callback = kwargs["callback"]
+        training_callback.init_callback(model)
+        assert training_callback.on_step() is True
+        env.verified_solution = True
+        assert training_callback.on_step() is False
+
+    model.learn.side_effect = learn
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv", return_value=env),
+        patch("mnt.nanoplacer.main.MaskablePPO", return_value=model) as ppo,
+    ):
+        create_layout(
+            minimal_layout_dimension=False,
+            seed=42,
+            stop_on_solution=True,
+            callback=callback,
+        )
+
+    assert ppo.call_args.kwargs["seed"] == 42
+    assert on_step.call_count == (2 if with_callback else 0)
+    model.save.assert_called_once()
+    assert Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip").exists()
+
+
+def test_checkpoint_replaces_only_a_complete_archive(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "model.zip"
+    checkpoint.write_bytes(b"previous checkpoint")
+
+    def failed_save(archive) -> None:
+        archive.write(b"incomplete archive")
+        msg = "disk failure"
+        raise OSError(msg)
+
+    with pytest.raises(OSError, match="disk failure"):
+        _save_checkpoint(Mock(save=failed_save), checkpoint)
+    assert checkpoint.read_bytes() == b"previous checkpoint"
+    assert list(tmp_path.iterdir()) == [checkpoint]
+
+    _save_checkpoint(Mock(save=lambda archive: archive.write(b"complete checkpoint")), checkpoint)
+    assert checkpoint.read_bytes() == b"complete checkpoint"
+    assert list(tmp_path.iterdir()) == [checkpoint]
 
 
 def test_create_layout_uses_2ddwave_dimensions_for_sidb(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -144,6 +223,30 @@ def test_create_layout_rejects_unknown_minimal_dimensions(tmp_path: Path, monkey
 
     with pytest.raises(ValueError, match="No predefined layout dimensions"):
         create_layout(clocking_scheme="ESR")
+
+
+@pytest.mark.parametrize("seed", [-1, 2**32])
+def test_create_layout_rejects_seed_before_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, seed: int) -> None:
+    monkeypatch.chdir(tmp_path)
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
+        pytest.raises(ValueError, match="Seed must be between 0 and 4294967295"),
+    ):
+        create_layout(seed=seed)
+    env.assert_not_called()
+    assert not any(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("seed", [-1, 2**32])
+def test_start_rejects_invalid_seed_with_argument_error(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], seed: int
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["mnt.nanoplacer", "--seed", str(seed)])
+    with patch("mnt.nanoplacer.main.create_layout") as create, pytest.raises(SystemExit) as error:
+        start()
+    assert error.value.code == 2
+    assert "--seed must be between 0 and 4294967295" in capsys.readouterr().err
+    create.assert_not_called()
 
 
 def test_start_forwards_cli_arguments_by_keyword(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -172,6 +275,9 @@ def test_start_forwards_cli_arguments_by_keyword(monkeypatch: pytest.MonkeyPatch
             "3",
             "--optimize",
             "--routing-fallback",
+            "--seed",
+            "42",
+            "--stop-on-solution",
         ],
     )
 
@@ -191,4 +297,6 @@ def test_start_forwards_cli_arguments_by_keyword(monkeypatch: pytest.MonkeyPatch
         verbose=3,
         optimize=True,
         routing_fallback=True,
+        seed=42,
+        stop_on_solution=True,
     )

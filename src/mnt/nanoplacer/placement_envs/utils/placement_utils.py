@@ -1,10 +1,24 @@
 from collections import deque
 from collections.abc import Iterator
+from functools import lru_cache
 from pathlib import Path
 
 import networkx as nx
 
 from mnt import pyfiction
+
+MAX_TIMESTEPS = 10_000_000
+
+
+def recommended_timesteps(placement_nodes: int) -> int:
+    """Size-based starting budget, not a guarantee of a successful placement."""
+    return min(MAX_TIMESTEPS, max(10_000, 1_000 * placement_nodes))
+
+
+@lru_cache(maxsize=128)
+def placement_node_count(benchmark: str, function: str) -> int:
+    """Count placement decisions, including I/O and substituted fanout nodes."""
+    return len(create_action_list(benchmark, function)[2])
 
 
 def map_to_multidiscrete(action: int, layout_width: int) -> tuple[int, int]:
