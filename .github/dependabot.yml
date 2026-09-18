@@ -7,9 +7,11 @@ version: 2
 updates:
   - package-ecosystem: "pip" # See documentation for possible values
     directory: "/" # Location of package manifests
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
     schedule:
       interval: "weekly"
       day: "friday"
@@ -19,14 +21,15 @@ updates:
       - "simon1hofmann"
   - package-ecosystem: "github-actions"
     directory: "/"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
     groups:
       codeql:
         # CodeQL initialization and analysis must use the same action version.
         patterns:
           - "github/codeql-action/*"
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
     schedule:
       interval: "weekly"
       day: "friday"
