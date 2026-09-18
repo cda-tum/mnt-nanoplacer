@@ -16,6 +16,11 @@ updates:
       - "simon1hofmann"
   - package-ecosystem: "github-actions"
     directory: "/"
+    groups:
+      codeql:
+        # CodeQL initialization and analysis must use the same action version.
+        patterns:
+          - "github/codeql-action/*"
     schedule:
       interval: "weekly"
       day: "friday"
