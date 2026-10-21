@@ -82,7 +82,7 @@ jobs:
       - name: Install and test wheel
         run: |
           python -m pip install --verbose "mnt.nanoplacer[gui,test]" dist/*.whl
-          python -m pytest tests .github/tests
+          python -m pytest
           python -m pip check
           mnt.nanoplacer --help
           mnt.nanoplacer.gui --help
@@ -117,7 +117,7 @@ jobs:
       - name: Install and test source distribution
         run: |
           python -m pip install --verbose "mnt.nanoplacer[gui,test]" dist/*.tar.gz
-          python -m pytest tests .github/tests
+          python -m pytest
           python -m pip check
           mnt.nanoplacer --help
           mnt.nanoplacer.gui --help
@@ -125,7 +125,7 @@ jobs:
         run: |
           python -m pip install --no-deps -e .
           python -c "import mnt.pyfiction; import mnt.nanoplacer.gui"
-          python -m pytest tests .github/tests
+          python -m pytest
       - if: github.event_name == 'release'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
