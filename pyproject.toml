@@ -46,7 +46,7 @@ classifiers = [
 [project.optional-dependencies]
 test = ["pytest>=8.2.1"]
 coverage = ["mnt.nanoplacer[test]", "pytest-cov"]
-gui = ["flask>=3.1"]
+gui = ["flask>=3.1.3"]
 
 [project.scripts]
 "mnt.nanoplacer" = "mnt.nanoplacer.main:start"
@@ -58,7 +58,12 @@ Homepage = "https://github.com/cda-tum/NanoPlaceR"
 Discussions = "https://github.com/cda-tum/NanoPlaceR/discussions"
 Research = "https://www.cda.cit.tum.de/research/fcn/"
 
-# ponytail: Editable installs need mnt.pyfiction to make its regular `mnt` package extensible; wheels merge safely.
+[tool.setuptools]
+# Map the shared namespace explicitly, as pyfiction installs a regular mnt package.
+package-dir = { "mnt" = "src/mnt" }
+packages = ["mnt", "mnt.nanoplacer", "mnt.nanoplacer.placement_envs", "mnt.nanoplacer.placement_envs.utils"]
+include-package-data = false
+
 [tool.setuptools.package-data]
 "mnt.nanoplacer" = ["benchmarks/*/*.v", "templates/*.html", "static/*.css", "static/*.js", "static/*.svg"]
 
