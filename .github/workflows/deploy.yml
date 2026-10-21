@@ -15,6 +15,7 @@ concurrency:
 permissions: {}
 
 env:
+  # TODO(emudhra): remove incident-specific setup only after runner/client verification; see #40.
   # Use the refreshed OS roots instead of Node's bundled certificate snapshot.
   NODE_OPTIONS: --use-openssl-ca
   SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
@@ -43,7 +44,9 @@ jobs:
           python-version: "3.14"
       - &bootstrap-pip
         name: Bootstrap patched pip
-        run: python -m pip install --upgrade "pip @ $PIP_BOOTSTRAP_URL"
+        run: |
+          python -m pip install --upgrade "pip @ $PIP_BOOTSTRAP_URL"
+          python .github/scripts/check_tls_trust.py
       - name: Run pre-commit
         run: |
           python -m pip install pre-commit "virtualenv>=21.14.12" "certifi>=2026.10.19"
@@ -79,7 +82,7 @@ jobs:
       - name: Install and test wheel
         run: |
           python -m pip install --verbose "mnt.nanoplacer[gui,test]" dist/*.whl
-          python -m pytest
+          python -m pytest tests .github/tests
           python -m pip check
           mnt.nanoplacer --help
           mnt.nanoplacer.gui --help
@@ -114,7 +117,7 @@ jobs:
       - name: Install and test source distribution
         run: |
           python -m pip install --verbose "mnt.nanoplacer[gui,test]" dist/*.tar.gz
-          python -m pytest
+          python -m pytest tests .github/tests
           python -m pip check
           mnt.nanoplacer --help
           mnt.nanoplacer.gui --help
@@ -122,7 +125,7 @@ jobs:
         run: |
           python -m pip install --no-deps -e .
           python -c "import mnt.pyfiction; import mnt.nanoplacer.gui"
-          python -m pytest
+          python -m pytest tests .github/tests
       - if: github.event_name == 'release'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

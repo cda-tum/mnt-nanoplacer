@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # TODO(emudhra): remove incident-specific setup only after runner/client verification; see #40.
   # Use the refreshed OS roots instead of Node's bundled certificate snapshot.
   NODE_OPTIONS: --use-openssl-ca
   SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
