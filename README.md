@@ -63,6 +63,8 @@ mnt.nanoplacer --benchmark trindade16 --function mux21 \
 
 Runs store generated layouts in `layouts/`, trained agents in `models/`, and TensorBoard data in `tensorboard/`. By default, the CLI resumes a matching saved model when one exists; pass `--reset-model` to train from scratch.
 
+An explicit timestep budget must be a positive integer. Invalid budgets and seeds are rejected before creating output folders or changing a checkpoint; `time_steps=None` keeps the automatic budget.
+
 Pass `--stop-on-solution` (or `stop_on_solution=True` in Python) to stop after the first equivalent layout and save the checkpoint. Otherwise training continues, retaining equivalent solutions that improve area, then wire count, then crossing count. Complete candidates are checked for equivalence before they can replace solution exports. Both strong and weak equivalence count as verified; weak equivalence permits different timing. This does not change the agent's reward function.
 
 ## Browser interface
@@ -101,6 +103,8 @@ During GUI training, one `models/recovery.zip` is atomically replaced approximat
 This is a **local workstation interface**, bound to loopback, not a multi-user hosted service. It supports bundled benchmarks, grids up to 128 × 128, and budgets up to 10 million timesteps. The Python API and original CLI remain available without the GUI dependency.
 
 ## Repository structure
+
+For development, install with `python -m pip install -e ".[gui,test]"` and run `python -m pytest`. Editable installs share the `mnt` namespace with pyfiction, without modifying its installed files.
 
 ```text
 src/mnt/nanoplacer/

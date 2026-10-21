@@ -8,6 +8,24 @@ from stable_baselines3.common.callbacks import ConvertCallback
 from mnt.nanoplacer.main import _save_checkpoint, create_layout, start
 
 
+@pytest.mark.parametrize("budget", [0, -1, True, 1.5, float("nan"), float("inf"), "100"])
+def test_invalid_budget_cannot_replace_a_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, budget) -> None:
+    monkeypatch.chdir(tmp_path)
+    model_path = Path("models/ppo_Gate-level_trindade16_mux21_2DDWave_3x4.zip")
+    model_path.parent.mkdir()
+    model_path.write_bytes(b"saved checkpoint")
+    with (
+        patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
+        patch("mnt.nanoplacer.main.MaskablePPO") as ppo,
+        pytest.raises(ValueError, match="positive integer"),
+    ):
+        create_layout(minimal_layout_dimension=False, time_steps=budget)
+    env.assert_not_called()
+    ppo.assert_not_called()
+    assert model_path.read_bytes() == b"saved checkpoint"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["models"]
+
+
 def test_create_layout_starts_and_saves_a_new_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     env = Mock()
@@ -76,6 +94,18 @@ def test_cli_defaults_to_automatic_budget(monkeypatch: pytest.MonkeyPatch) -> No
     assert create.call_args.kwargs["time_steps"] is None
 
 
+@pytest.mark.parametrize("budget", ["0", "-1"])
+def test_cli_rejects_invalid_budget(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, budget: str
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["mnt.nanoplacer", "--time-steps", budget])
+    with patch("mnt.nanoplacer.main.create_layout") as create, pytest.raises(SystemExit) as exc:
+        start()
+    assert exc.value.code == 2
+    assert "--time-steps must be a positive integer" in capsys.readouterr().err
+    create.assert_not_called()
+
+
 @pytest.mark.parametrize("resume", [False, True])
 def test_optional_seed_and_gui_hooks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, resume: bool) -> None:
     monkeypatch.chdir(tmp_path)
@@ -115,7 +145,7 @@ def test_create_layout_uses_iscas85_dimensions(tmp_path: Path, monkeypatch: pyte
         patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
         patch("mnt.nanoplacer.main.MaskablePPO"),
     ):
-        create_layout(benchmark="ISCAS85", function="c17", time_steps=0)
+        create_layout(benchmark="ISCAS85", function="c17", time_steps=1)
 
     assert env.call_args.kwargs["layout_width"] == 7
     assert env.call_args.kwargs["layout_height"] == 7
@@ -211,7 +241,7 @@ def test_create_layout_uses_2ddwave_dimensions_for_sidb(tmp_path: Path, monkeypa
         patch("mnt.nanoplacer.main.NanoPlacementEnv") as env,
         patch("mnt.nanoplacer.main.MaskablePPO"),
     ):
-        create_layout(technology="SiDB", clocking_scheme="USE", time_steps=0)
+        create_layout(technology="SiDB", clocking_scheme="USE", time_steps=1)
 
     assert env.call_args.kwargs["clocking_scheme"] == "2DDWave"
     assert env.call_args.kwargs["layout_width"] == 4
@@ -225,7 +255,7 @@ def test_create_layout_rejects_unknown_minimal_dimensions(tmp_path: Path, monkey
         create_layout(clocking_scheme="ESR")
 
 
-@pytest.mark.parametrize("seed", [-1, 2**32])
+@pytest.mark.parametrize("seed", [-1, 2**32, True, 1.5])
 def test_create_layout_rejects_seed_before_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, seed: int) -> None:
     monkeypatch.chdir(tmp_path)
     with (

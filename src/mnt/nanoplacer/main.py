@@ -55,7 +55,10 @@ def create_layout(
     routing_fallback experimentally retries blocked two-input routes in reverse order.
     It uses separate checkpoints so normal runs do not silently resume a changed search.
     """
-    if seed is not None and not 0 <= seed < 2**32:
+    if time_steps is not None and (type(time_steps) is not int or time_steps <= 0):
+        msg = "Timesteps must be a positive integer or None for an automatic budget"
+        raise ValueError(msg)
+    if seed is not None and (type(seed) is not int or not 0 <= seed < 2**32):
         msg = "Seed must be between 0 and 4294967295"
         raise ValueError(msg)
     effective_clocking_scheme = "2DDWave" if technology.lower() == "sidb" else clocking_scheme
@@ -228,6 +231,8 @@ def start() -> None:
         help="Stop training after the first equivalent layout and save the model checkpoint.",
     )
     args = parser.parse_args()
+    if args.time_steps is not None and args.time_steps <= 0:
+        parser.error("--time-steps must be a positive integer")
     if args.seed is not None and not 0 <= args.seed < 2**32:
         parser.error("--seed must be between 0 and 4294967295")
     create_layout(

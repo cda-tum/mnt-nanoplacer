@@ -118,6 +118,11 @@ jobs:
           python -m pip check
           mnt.nanoplacer --help
           mnt.nanoplacer.gui --help
+      - name: Check editable install alongside pyfiction
+        run: |
+          python -m pip install --no-deps -e .
+          python -c "import mnt.pyfiction; import mnt.nanoplacer.gui"
+          python -m pytest
       - if: github.event_name == 'release'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
