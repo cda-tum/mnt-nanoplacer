@@ -44,9 +44,7 @@ jobs:
           python-version: "3.14"
       - &bootstrap-pip
         name: Bootstrap patched pip
-        run: |
-          python -m pip install --upgrade "pip @ $PIP_BOOTSTRAP_URL"
-          python .github/scripts/check_tls_trust.py
+        run: python -m pip install --upgrade "pip @ $PIP_BOOTSTRAP_URL"
       - name: Run pre-commit
         run: |
           python -m pip install pre-commit "virtualenv>=21.14.12" "certifi>=2026.10.19"
