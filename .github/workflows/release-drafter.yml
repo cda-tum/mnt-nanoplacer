@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+env:
+  # Use the refreshed OS roots instead of Node's bundled certificate snapshot.
+  NODE_OPTIONS: --use-openssl-ca
+  SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+  SSL_CERT_DIR: /etc/ssl/certs
+
 jobs:
   update_release_draft:
     permissions:
@@ -15,6 +21,10 @@ jobs:
       pull-requests: read
     runs-on: ubuntu-latest
     steps:
+      - name: Refresh system certificates
+        run: |
+          sudo apt-get update
+          sudo apt-get install --only-upgrade --yes ca-certificates
       - uses: release-drafter/release-drafter@72967cdc98ddd3160f1fc3dff619de365e137dd0 # v7.9.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
