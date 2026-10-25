@@ -1,4 +1,4 @@
-name: Installation and browser checks
+name: 🧪 CI · Integration & audit
 
 on:
   push:
@@ -22,7 +22,7 @@ env:
 
 jobs:
   installation:
-    name: Install on ${{ matrix.os }}
+    name: 📦 Install (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +75,7 @@ jobs:
           enable-cache: auto
           cache-suffix: ${{ github.job }}-${{ runner.os }}
       - name: Build and exercise installed wheel
+        id: check
         run: |
           interpreter="$(python -c 'import sys; print(sys.executable)')"
           uv build --no-sources --python "$interpreter" --wheel --out-dir "$RUNNER_TEMP/wheels"
@@ -83,8 +84,29 @@ jobs:
           mnt.nanoplacer --help
           mnt.nanoplacer.gui --help
 
+      - &summary
+        name: 📋 Job summary
+        if: always()
+        shell: bash
+        env:
+          CHECK_RESULT: ${{ steps.check.outcome }}
+          JOB_RESULT: ${{ job.status }}
+        run: |
+          {
+            printf '### 📋 %s\n\n' "$GITHUB_JOB"
+            printf '| Item | Result |\n| --- | --- |\n'
+            printf '| Job | %s |\n' "$JOB_RESULT"
+            printf '| Check | %s |\n' "${CHECK_RESULT:-not run}"
+            printf '| Platform | %s / %s |\n' "$RUNNER_OS" "$RUNNER_ARCH"
+            printf '| Python | %s |\n' "$(python --version 2>/dev/null || printf 'unavailable')"
+            printf '| uv | %s |\n' "$(uv --version 2>/dev/null || printf 'unavailable')"
+            if [ "$GITHUB_JOB" = browser ]; then
+              printf '\nIf a failure trace was captured, download **browser-trace** from this run’s artifacts. Open it with `uvx --from playwright playwright show-trace path/to/trace.zip`. Artifacts expire after seven days.\n'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   browser:
-    name: Browser workflow
+    name: 🌐 Browser smoke test
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -97,6 +119,7 @@ jobs:
           uv pip install --python "$(command -v python)" --only-binary=mnt.pyfiction -e ".[gui]" pytest-playwright
           python -m playwright install --with-deps chromium
       - name: Test the real interface
+        id: check
         run: python -m pytest tests/browser_smoke.py --tracing=retain-on-failure
       - name: Keep failure trace
         if: failure()
@@ -105,9 +128,10 @@ jobs:
           name: browser-trace
           path: test-results/
           retention-days: 7
+      - *summary
 
   audit:
-    name: Audit installed dependencies
+    name: 🛡️ Runtime dependency audit
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -116,8 +140,10 @@ jobs:
       - *python
       - *uv
       - name: Resolve runtime dependencies and audit every installed dependency
+        id: check
         run: |
           uv venv --python "$(command -v python)" "$RUNNER_TEMP/runtime"
           uv pip install --python "$RUNNER_TEMP/runtime" --only-binary=mnt.pyfiction -e ".[gui]"
           uv pip freeze --python "$RUNNER_TEMP/runtime" --exclude-editable > "$RUNNER_TEMP/runtime.txt"
           uvx --with "certifi>=2026.10.19" pip-audit --no-deps --disable-pip -r "$RUNNER_TEMP/runtime.txt"
+      - *summary
