@@ -20,13 +20,49 @@ NanoPlaceR is an open-source physical-design tool for field-coupled nanocomputin
 
 NanoPlaceR supports Python 3.11 through 3.14 and requires `mnt.pyfiction` 0.8 or newer. The CI suite covers both ends of that range.
 
+### Recommended: install the app with uv
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) 0.13.5 or newer, then run:
+
+```console
+uv tool install --python 3.13 "mnt.nanoplacer[gui]"
+mnt.nanoplacer.gui
+```
+
+This installs both the CLI and browser interface in an isolated environment, without manual activation. uv can download
+Python if it is missing; selecting Python 3.13 avoids unsupported interpreter versions. If the commands are not on your
+PATH, run `uv tool update-shell` and restart your terminal. Update with `uv tool upgrade mnt.nanoplacer`.
+For a CLI-only installation, omit `[gui]`.
+
+To try the GUI without a persistent tool installation:
+
+```console
+uvx --python 3.13 --from "mnt.nanoplacer[gui]" mnt.nanoplacer.gui
+```
+
+The first run downloads dependencies; later runs reuse uv's cache. Experiments remain in `nanoplacer-runs/` in your working
+directory, outside the tool environment. Stop the server with Ctrl+C. uv manages installation, not the training algorithm.
+
+### Python library or pip installation
+
+For the Python API, use a project environment: `uv tool install` intentionally does not expose its libraries to other
+Python interpreters.
+
+```console
+uv venv --python 3.13
+uv pip install --python .venv mnt.nanoplacer
+uv run --no-project --python .venv python -c "from mnt.nanoplacer import create_layout"
+```
+
+Standard pip installations remain supported:
+
 ```console
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install mnt.nanoplacer
 ```
 
-On Windows, activate the environment with `.venv\Scripts\activate`.
+For fish, activate with `source .venv/bin/activate.fish`; for Windows PowerShell, use `.venv\Scripts\Activate.ps1`.
 
 ## Usage
 
@@ -69,7 +105,8 @@ Pass `--stop-on-solution` (or `stop_on_solution=True` in Python) to stop after t
 
 ## Browser interface
 
-Install the optional standalone GUI and launch it locally:
+The recommended uv installation above includes the GUI. If using a pip-managed project environment instead,
+install the optional GUI and launch it locally:
 
 ```console
 python -m pip install "mnt.nanoplacer[gui]"
@@ -104,7 +141,19 @@ This is a **local workstation interface**, bound to loopback, not a multi-user h
 
 ## Repository structure
 
-For development, install with `python -m pip install -e ".[gui,test]"` and run `python -m pytest`. Editable installs share the `mnt` namespace with pyfiction, without modifying its installed files.
+For development, clone this repository and run:
+
+```console
+uv venv --python 3.13
+uv pip install --python .venv -e ".[gui,test]"
+uv run --no-project --python .venv python -m pytest
+uv run --no-project --python .venv mnt.nanoplacer.gui
+```
+
+Alternatively, activate a virtual environment, install with `python -m pip install -e ".[gui,test]"`, and run
+`python -m pytest`. Editable installs share the `mnt` namespace with pyfiction, without modifying its installed files.
+CI builds with uv and the existing setuptools backend, tests wheel installs with uv and source installs with pip,
+and checks both `uv tool install` and `uvx`. Publishing is unchanged.
 
 ```text
 src/mnt/nanoplacer/
