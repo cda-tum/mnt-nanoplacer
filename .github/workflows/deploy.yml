@@ -1,4 +1,4 @@
-name: Deploy to PyPI
+name: 🧪 CI · Build & test
 
 on:
   release:

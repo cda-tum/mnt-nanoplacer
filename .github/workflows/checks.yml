@@ -1,4 +1,4 @@
-name: Installation and browser checks
+name: 🧪 CI · Integration & audit
 
 on:
   push:
@@ -22,7 +22,7 @@ env:
 
 jobs:
   installation:
-    name: Install on ${{ matrix.os }}
+    name: 📦 Install (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -84,7 +84,7 @@ jobs:
           mnt.nanoplacer.gui --help
 
   browser:
-    name: Browser workflow
+    name: 🌐 Browser smoke test
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -107,7 +107,7 @@ jobs:
           retention-days: 7
 
   audit:
-    name: Audit installed dependencies
+    name: 🛡️ Runtime dependency audit
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
