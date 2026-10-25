@@ -29,6 +29,24 @@ uv tool install --python 3.13 "mnt.nanoplacer[gui]"
 mnt.nanoplacer.gui
 ```
 
+## Installation, browser, and dependency checks
+
+CI smoke-tests built wheels on macOS ARM and Windows x64 with Python 3.13; the existing Linux jobs cover the
+minimum and maximum supported Python versions. One Chromium workflow checks the real interface, and a separate
+job audits freshly resolved runtime dependencies (including transitive dependencies) with `pip-audit` on PRs,
+main, and weekly. Browser failure traces are retained for seven days; these tests use temporary data only.
+
+To run the browser check locally after creating the development environment:
+
+```console
+uv pip install --python .venv pytest-playwright
+uv run --no-project --python .venv python -m playwright install chromium
+uv run --no-project --python .venv python -m pytest tests/browser_smoke.py
+```
+
+The browser test starts a real worker, waits for its first progress update, then stops and exports the run.
+It does not benchmark placement quality or require a successful layout.
+
 This installs both the CLI and browser interface in an isolated environment, without manual activation. uv can download
 Python if it is missing; selecting Python 3.13 avoids unsupported interpreter versions. If the commands are not on your
 PATH, run `uv tool update-shell` and restart your terminal. Update with `uv tool upgrade mnt.nanoplacer`.

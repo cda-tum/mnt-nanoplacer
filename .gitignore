@@ -67,3 +67,6 @@ tensorboard
 tests/layouts
 tests/models
 tests/tensorboard
+
+# Playwright traces from local browser smoke tests.
+test-results/

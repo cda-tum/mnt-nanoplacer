@@ -1,0 +1,123 @@
+name: Installation and browser checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  UV_PYTHON_DOWNLOADS: never
+  # TODO(emudhra): keep portable trust bootstrapping until #40 is resolved.
+  NODE_OPTIONS: --use-openssl-ca
+
+jobs:
+  installation:
+    name: Install on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - &certificates
+        name: Bootstrap verified CA bundle
+        shell: python
+        run: |
+          import hashlib
+          import io
+          import os
+          import pathlib
+          import urllib.request
+          import zipfile
+
+          # Verify before using: the preinstalled client's trust store may be stale.
+          url = "https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl"
+          with urllib.request.urlopen(url, timeout=60) as response:
+              wheel = response.read()
+          if hashlib.sha256(wheel).hexdigest() != "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1":
+              raise SystemExit("certifi checksum mismatch")
+          bundle = pathlib.Path(os.environ["RUNNER_TEMP"]) / "ci-ca.pem"
+          with zipfile.ZipFile(io.BytesIO(wheel)) as archive:
+              bundle.write_bytes(archive.read("certifi/cacert.pem"))
+          empty = bundle.parent / "empty-ca-directory"
+          empty.mkdir(exist_ok=True)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              for key in ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "PIP_CERT", "GIT_SSL_CAINFO"):
+                  environment.write(f"{key}={bundle.as_posix()}\n")
+              environment.write(f"SSL_CERT_DIR={empty.as_posix()}\n")
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - &python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - &uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
+          enable-cache: auto
+          cache-suffix: ${{ github.job }}-${{ runner.os }}
+      - name: Build and exercise installed wheel
+        run: |
+          interpreter="$(python -c 'import sys; print(sys.executable)')"
+          uv build --no-sources --python "$interpreter" --wheel --out-dir "$RUNNER_TEMP/wheels"
+          uv pip install --python "$interpreter" --only-binary=mnt.pyfiction "$RUNNER_TEMP"/wheels/*.whl "mnt.nanoplacer[gui]"
+          python -c "from mnt.nanoplacer import create_layout; import mnt.pyfiction; import z3; assert str(z3.Solver().check()) == 'sat'"
+          mnt.nanoplacer --help
+          mnt.nanoplacer.gui --help
+
+  browser:
+    name: Browser workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - *certificates
+      - *checkout
+      - *python
+      - *uv
+      - name: Install browser test dependencies
+        run: |
+          uv pip install --python "$(command -v python)" --only-binary=mnt.pyfiction -e ".[gui]" pytest-playwright
+          python -m playwright install --with-deps chromium
+      - name: Test the real interface
+        run: python -m pytest tests/browser_smoke.py --tracing=retain-on-failure
+      - name: Keep failure trace
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-trace
+          path: test-results/
+          retention-days: 7
+
+  audit:
+    name: Audit installed dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - *certificates
+      - *checkout
+      - *python
+      - *uv
+      - name: Resolve runtime dependencies and audit every installed dependency
+        run: |
+          uv venv --python "$(command -v python)" "$RUNNER_TEMP/runtime"
+          uv pip install --python "$RUNNER_TEMP/runtime" --only-binary=mnt.pyfiction -e ".[gui]"
+          uv pip freeze --python "$RUNNER_TEMP/runtime" --exclude-editable > "$RUNNER_TEMP/runtime.txt"
+          uvx --with "certifi>=2026.10.19" pip-audit --no-deps --disable-pip -r "$RUNNER_TEMP/runtime.txt"
