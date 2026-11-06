@@ -17,6 +17,7 @@ const controls = ['github.com', 'pypi.org', 'files.pythonhosted.org', 'probe-emu
 const rejected = new Set(['UNABLE_TO_GET_ISSUER_CERT', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'SELF_SIGNED_CERT_IN_CHAIN', 'CERT_REVOKED', 'CERT_UNTRUSTED', 'CERT_REJECTED']);
 const emit = value => console.log('TLS_DIAGNOSTIC ' + JSON.stringify(value));
 emit({kind: 'metadata', label: 'runner-embedded-node', executable: process.execPath, versions: process.versions, argv: process.execArgv});
+fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'node-roots.pem'), require('node:tls').rootCertificates.join('\n'));
 
 function probe(host) {
   return new Promise(resolve => {

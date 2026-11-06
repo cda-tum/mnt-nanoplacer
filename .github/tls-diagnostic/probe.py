@@ -2,6 +2,8 @@
 
 import argparse
 import concurrent.futures
+import hashlib
+import io
 import importlib.metadata
 import json
 import os
@@ -13,6 +15,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
+import zipfile
 
 HERE = Path(__file__).resolve().parent
 HOSTS = json.loads((HERE / "hosts.json").read_text())
@@ -29,6 +32,7 @@ REJECTIONS = (
     "certificate untrusted", "certificate rejected", "certificate is not trusted",
     "unknownissuer", "unknown issuer", "revoked", "blocked public key", "public key is blocked",
     "compromised", "denylist", "distrusted", "untrustedroot", "cert_e_untrustedroot",
+    "server certificate verification failed", "sslverificationerror",
 )
 
 
@@ -91,7 +95,7 @@ def cli_request(client, host):
         command = ["uv", "pip", "install", "--python", sys.executable, "--dry-run", "--no-deps",
                    "--reinstall", "--no-cache", url + "certifi-0.0.0-py3-none-any.whl"]
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=35)
+        result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=35)
         output = result.stdout + result.stderr
         if client == "curl":
             if result.returncode == 0:
@@ -169,16 +173,41 @@ def isolated():
         ("uv-build-isolation", ["uv", "build", "--wheel", "--no-cache", "--python", sys.executable, str(project)]),
     ):
         environment = dict(os.environ, PROBE_BUILD_LABEL=name)
-        result = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=180)
+        result = subprocess.run(command, env=environment, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180)
         output = result.stdout + result.stderr
         print(output, flush=True)
         if "TLS_DIAGNOSTIC_BUILD_COMPLETE" not in output or '"kind": "summary"' not in output:
             raise RuntimeError(f"{name} did not reach the isolated probe")
 
 
+def offline():
+    with urllib.request.urlopen("https://emudhra.we-have-a-problem.com/chains.zip", timeout=60) as response:
+        archive = response.read()
+    assert hashlib.sha256(archive).hexdigest() == "afb9d69e8e5fc9eb0c08d5fe4baafc67edbcced2d63af2f9deb62edb6431d4a9", "Incident chain archive changed"
+    root = Path(tempfile.mkdtemp(prefix="tls-chains-"))
+    environment = {key: value for key, value in os.environ.items() if key not in OVERRIDES}
+    stores = {
+        "original-system-store": [],
+        "verified-certifi-store": ["-CAfile", os.environ["SSL_CERT_FILE"], "-no-CApath", "-no-CAstore"],
+        "embedded-node-root-bundle": ["-CAfile", str(Path(os.environ["RUNNER_TEMP"]) / "node-roots.pem"), "-no-CApath", "-no-CAstore"],
+    }
+    with zipfile.ZipFile(io.BytesIO(archive)) as archive_zip:
+        names = [name for name in archive_zip.namelist() if name.endswith(".pem")]
+        assert len(names) == 16 and sum("rollover/" in name for name in names) == 2
+        for name in names:
+            pem = root / Path(name).name
+            pem.write_bytes(archive_zip.read(name))
+            for store, options in stores.items():
+                result = subprocess.run(["openssl", "verify", "-show_chain", "-purpose", "sslserver", *options, "-untrusted", str(pem), str(pem)], env=environment, capture_output=True, text=True, timeout=20)
+                detail = result.stdout + result.stderr
+                status = "connected" if result.returncode == 0 else classify_error(detail)
+                emit(dict(kind="result", label="offline-store-only", client=store, host=Path(name).name, expected="rejected", status=status, detail=detail))
+    print("Offline bundle measurements do not exercise runtime public-key denylists.", flush=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["clients", "isolated", "bundled-pip", "self-check"])
+    parser.add_argument("mode", choices=["clients", "isolated", "bundled-pip", "offline", "self-check"])
     parser.add_argument("--label", default="selected-python")
     parser.add_argument("--only", default="python,pip")
     args = parser.parse_args()
@@ -191,6 +220,8 @@ if __name__ == "__main__":
         print("Diagnostic classification checks passed")
     elif args.mode == "isolated":
         isolated()
+    elif args.mode == "offline":
+        offline()
     elif args.mode == "bundled-pip":
         import ensurepip
         wheels = list((Path(ensurepip.__file__).parent / "_bundled").glob("pip-*.whl"))

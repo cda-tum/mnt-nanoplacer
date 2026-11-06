@@ -1,5 +1,5 @@
 {
-  "name": "Temporary TLS diagnostics (no publishing)",
+  "name": "Temporary TLS diagnostics follow-up (no publishing)",
   "on": {
     "push": {
       "branches": [
@@ -11,7 +11,7 @@
     "contents": "read"
   },
   "concurrency": {
-    "group": "temporary-tls-diagnostics-${{ github.ref }}",
+    "group": "temporary-tls-diagnostics-${{ github.ref }}-followup",
     "cancel-in-progress": true
   },
   "env": {
@@ -34,22 +34,6 @@
         "fail-fast": false,
         "matrix": {
           "include": [
-            {
-              "os": "ubuntu-latest",
-              "python": "3.11"
-            },
-            {
-              "os": "ubuntu-latest",
-              "python": "3.14"
-            },
-            {
-              "os": "ubuntu-24.04",
-              "python": "3.13"
-            },
-            {
-              "os": "macos-15",
-              "python": "3.13"
-            },
             {
               "os": "windows-2025",
               "python": "3.13"
@@ -145,10 +129,10 @@
         }
       ]
     },
-    "publishing_client": {
-      "name": "TLS / publishing container (GET only)",
+    "offline_stores": {
+      "name": "TLS / original stores and offline rollover chains",
       "runs-on": "ubuntu-latest",
-      "timeout-minutes": 15,
+      "timeout-minutes": 10,
       "steps": [
         {
           "name": "Keep bootstrap protected with the existing verified CA bundle",
@@ -167,8 +151,12 @@
           "run": "import json, os, platform, subprocess, sys\nprint(json.dumps({\"image\": os.environ.get(\"ImageVersion\"), \"platform\": platform.platform(), \"initial_python\": sys.version}))\nif sys.platform == \"linux\":\n    subprocess.run([\"dpkg-query\", \"-W\", \"ca-certificates\"], check=True)\n"
         },
         {
-          "name": "Inspect pinned publishing container without invoking upload or OIDC",
-          "run": "docker pull ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086\ndocker image inspect ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086 --format '{{json .RepoDigests}}'\ndocker run --rm --entrypoint python -v \"$GITHUB_WORKSPACE/.github/tls-diagnostic:/probe:ro\" ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086 /probe/probe.py clients --label publishing-container --only python,pip,requests,twine\n"
+          "name": "Measure embedded Node and export its bundled roots",
+          "uses": "./.github/tls-diagnostic/node"
+        },
+        {
+          "name": "Verify regular and rollover certificate chains offline",
+          "run": "python .github/tls-diagnostic/probe.py offline"
         }
       ]
     }
