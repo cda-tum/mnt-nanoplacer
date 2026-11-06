@@ -1,0 +1,5 @@
+name: Temporary embedded Node TLS measurement
+description: Spawn the actual runner action runtime with default TLS settings
+runs:
+  using: node24
+  main: probe.cjs
