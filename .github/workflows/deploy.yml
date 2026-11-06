@@ -169,4 +169,11 @@ jobs:
           pattern: artifact-*
           path: dist
           merge-multiple: true
+      - name: Stage refreshed certificates for the publishing container
+        run: |
+          cp /etc/ssl/certs/ca-certificates.crt "$GITHUB_WORKSPACE/.publish-ca.pem"
+          mkdir -p "$GITHUB_WORKSPACE/.publish-empty-ca"
       - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        env:
+          SSL_CERT_FILE: /github/workspace/.publish-ca.pem
+          SSL_CERT_DIR: /github/workspace/.publish-empty-ca
