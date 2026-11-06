@@ -33,6 +33,7 @@ REJECTIONS = (
     "unknownissuer", "unknown issuer", "revoked", "blocked public key", "public key is blocked",
     "compromised", "denylist", "distrusted", "untrustedroot", "cert_e_untrustedroot",
     "server certificate verification failed", "sslverificationerror",
+    "sec_e_untrusted_root", "cert_e_untrustedtestroot", "authority that is not trusted",
 )
 
 
@@ -137,7 +138,8 @@ def clients(label, names):
             emit(dict(kind="client-version", client=client, label=label,
                       output=subprocess.check_output([client, "--version"], text=True).strip()))
         probe = cli_request if client in ("curl", "git", "uv") else request
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        # pip caches a mutable truststore context; avoid changing it from multiple threads.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3 if client in ("curl", "git", "uv") else 1) as pool:
             values = list(pool.map(lambda host: probe(client, host), CONTROLS + HOSTS))
         for host, (status, detail) in zip(CONTROLS + HOSTS, values):
             row = dict(kind="result", label=label, client=client, host=host, status=status,
