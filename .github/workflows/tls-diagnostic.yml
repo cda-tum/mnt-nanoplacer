@@ -1,5 +1,5 @@
 {
-  "name": "Temporary TLS diagnostics follow-up (no publishing)",
+  "name": "Temporary publishing TLS diagnostics (no credentials)",
   "on": {
     "push": {
       "branches": [
@@ -11,7 +11,7 @@
     "contents": "read"
   },
   "concurrency": {
-    "group": "temporary-tls-diagnostics-${{ github.ref }}-followup",
+    "group": "temporary-tls-diagnostics-${{ github.ref }}-publishing",
     "cancel-in-progress": true
   },
   "env": {
@@ -26,21 +26,10 @@
     }
   },
   "jobs": {
-    "clients": {
-      "name": "TLS / ${{ matrix.os }} / Python ${{ matrix.python }}",
-      "runs-on": "${{ matrix.os }}",
-      "timeout-minutes": 20,
-      "strategy": {
-        "fail-fast": false,
-        "matrix": {
-          "include": [
-            {
-              "os": "windows-2025",
-              "python": "3.13"
-            }
-          ]
-        }
-      },
+    "publishing_client": {
+      "name": "TLS / publishing container (GET only)",
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 15,
       "steps": [
         {
           "name": "Keep bootstrap protected with the existing verified CA bundle",
@@ -59,73 +48,8 @@
           "run": "import json, os, platform, subprocess, sys\nprint(json.dumps({\"image\": os.environ.get(\"ImageVersion\"), \"platform\": platform.platform(), \"initial_python\": sys.version}))\nif sys.platform == \"linux\":\n    subprocess.run([\"dpkg-query\", \"-W\", \"ca-certificates\"], check=True)\n"
         },
         {
-          "name": "Probe original OS clients without overrides",
-          "run": "python .github/tls-diagnostic/probe.py clients --label original-os --only python,curl,git"
-        },
-        {
-          "name": "Probe actual embedded action Node without overrides",
-          "uses": "./.github/tls-diagnostic/node"
-        },
-        {
-          "name": "Refresh Linux certificates for protected setup",
-          "if": "runner.os == 'Linux'",
-          "run": "sudo apt-get -o Acquire::Retries=3 update\nsudo apt-get -o Acquire::Retries=3 install --only-upgrade --yes ca-certificates\ndpkg-query -W ca-certificates"
-        },
-        {
-          "name": "Compare refreshed OS clients without overrides",
-          "if": "runner.os == 'Linux'",
-          "run": "python .github/tls-diagnostic/probe.py clients --label refreshed-os --only python,curl,git"
-        },
-        {
-          "name": "Stage hash-verified pip before Python setup",
-          "shell": "python",
-          "run": "import hashlib, os, pathlib, urllib.request\nurl, digest = os.environ[\"PIP_BOOTSTRAP_URL\"].split(\"#sha256=\")\nwith urllib.request.urlopen(url, timeout=60) as response:\n    wheel = response.read()\nassert hashlib.sha256(wheel).hexdigest() == digest, \"pip checksum mismatch\"\ndirectory = pathlib.Path(os.environ[\"RUNNER_TEMP\"]) / \"pip-bootstrap\"\ndirectory.mkdir(exist_ok=True)\ntarget = directory / url.rsplit(\"/\", 1)[1]\ntarget.write_bytes(wheel)\nprint(\"Verified local pip wheel:\", target)\n"
-        },
-        {
-          "name": "Set up Python with the offline bootstrap protection",
-          "uses": "actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
-          "with": {
-            "python-version": "${{ matrix.python }}"
-          },
-          "env": {
-            "PIP_NO_INDEX": "1",
-            "PIP_FIND_LINKS": "${{ runner.temp }}/pip-bootstrap"
-          }
-        },
-        {
-          "name": "Record and probe initial selected Python and pip",
-          "run": "python .github/tls-diagnostic/probe.py clients --label initial-selected-python --only python,pip"
-        },
-        {
-          "name": "Measure the archived ensurepip client without installing anything",
-          "run": "python .github/tls-diagnostic/probe.py bundled-pip"
-        },
-        {
-          "name": "Retain patched pip bootstrap",
-          "run": "python -m pip install --upgrade \"pip @ $PIP_BOOTSTRAP_URL\""
-        },
-        {
-          "name": "Use the repository's uv version",
-          "uses": "astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e",
-          "with": {
-            "version": "0.13.5",
-            "enable-cache": false
-          }
-        },
-        {
-          "name": "Install diagnostic tools using protected setup",
-          "run": "uv pip install --python \"$(python -c 'import sys; print(sys.executable)')\" pre-commit \"virtualenv>=21.14.12\" \"certifi>=2026.10.19\" requests"
-        },
-        {
-          "name": "Probe patched installation clients without overrides",
-          "run": "python .github/tls-diagnostic/probe.py clients --label patched-tools --only python,pip,requests,uv"
-        },
-        {
-          "name": "Probe fresh pre-commit and isolated build environments",
-          "run": "python .github/tls-diagnostic/probe.py isolated",
-          "env": {
-            "PRE_COMMIT_HOME": "${{ runner.temp }}/diagnostic-pre-commit"
-          }
+          "name": "Inspect pinned publishing container without invoking upload or OIDC",
+          "run": "docker pull ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086\ndocker image inspect ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086 --format '{{json .RepoDigests}}'\ndocker run --rm --entrypoint python -v \"$GITHUB_WORKSPACE/.github/tls-diagnostic:/probe:ro\" ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086 /probe/probe.py clients --label publishing-default --only oidc,tuf,fulcio,twine\ndocker run --rm --entrypoint /bin/sh -v \"$GITHUB_WORKSPACE/.github/tls-diagnostic:/probe:ro\" ghcr.io/pypa/gh-action-pypi-publish:7245906fb61fa33a13554f9d5fb856fe61758086 -c 'export SSL_CERT_FILE=\"$(python -m certifi)\"; export SSL_CERT_DIR=\"$(mktemp -d)\"; exec python /probe/probe.py clients --keep-overrides --label publishing-verified-bundle --only oidc,tuf,fulcio,twine'\n"
         }
       ]
     }

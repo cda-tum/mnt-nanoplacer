@@ -54,7 +54,15 @@ def request(client, host):
         if client == "python":
             with urllib.request.urlopen(url, timeout=15) as response:
                 body = response.read(8192).decode(errors="replace")
-        elif client in ("pip", "requests", "twine", "httpx"):
+        elif client in ("oidc", "tuf"):
+            if client == "oidc":
+                from id._internal.oidc.ambient import _request
+                response = _request("GET", url, timeout=15, retries=False)
+            else:
+                from tuf.ngclient.urllib3_fetcher import Urllib3Fetcher
+                response = Urllib3Fetcher(socket_timeout=15)._proxy_env.request("GET", url, timeout=15, retries=False)
+            body = response.data[:8192].decode(errors="replace")
+        elif client in ("pip", "requests", "twine", "httpx", "fulcio"):
             if client == "pip":
                 from pip._internal.commands import create_command
                 command = create_command("index")
@@ -66,6 +74,10 @@ def request(client, host):
             elif client == "httpx":
                 import httpx
                 session = httpx.Client()
+            elif client == "fulcio":
+                from sigstore._internal.fulcio.client import FulcioClient
+                fulcio = FulcioClient("https://fulcio.sigstore.dev")
+                session = fulcio.session
             else:
                 import requests
                 session = requests.Session()
@@ -112,9 +124,9 @@ def cli_request(client, host):
         return "inconclusive", "Process timeout"
 
 
-def clients(label, names):
-    removed = sorted(name for name in OVERRIDES if name in os.environ)
-    for name in OVERRIDES:
+def clients(label, names, keep_overrides=False):
+    removed = sorted(name for name in OVERRIDES if name in os.environ) if not keep_overrides else []
+    for name in removed:
         os.environ.pop(name, None)
     # Do not allow proxy trust or user package-index configuration to masquerade as the client.
     for name in list(os.environ):
@@ -124,14 +136,14 @@ def clients(label, names):
                       UV_NO_CONFIG="1", UV_HTTP_RETRIES="0", UV_HTTP_TIMEOUT="15",
                       UV_PYTHON_DOWNLOADS="never", GIT_TERMINAL_PROMPT="0", GIT_TRACE_CURL="1", GIT_TRACE_CURL_NO_DATA="1")
     packages = {}
-    for name in ("pip", "certifi", "virtualenv", "pre-commit", "requests", "httpx", "twine", "sigstore"):
+    for name in ("pip", "certifi", "virtualenv", "pre-commit", "requests", "httpx", "twine", "sigstore", "id", "tuf", "urllib3"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             pass
     emit(dict(kind="metadata", label=label, python=sys.version, executable=sys.executable,
               openssl=ssl.OPENSSL_VERSION, trust_paths=ssl.get_default_verify_paths()._asdict(),
-              removed_overrides=removed, packages=packages))
+              removed_overrides=removed, packages=packages, keep_overrides=keep_overrides))
     results = []
     for client in names.split(","):
         if client in ("curl", "git", "uv"):
@@ -212,6 +224,7 @@ if __name__ == "__main__":
     parser.add_argument("mode", choices=["clients", "isolated", "bundled-pip", "offline", "self-check"])
     parser.add_argument("--label", default="selected-python")
     parser.add_argument("--only", default="python,pip")
+    parser.add_argument("--keep-overrides", action="store_true")
     args = parser.parse_args()
     if args.mode == "self-check":
         assert len(HOSTS) == len(set(HOSTS)) == 14
@@ -231,4 +244,4 @@ if __name__ == "__main__":
         environment = dict(os.environ, PYTHONPATH=str(wheels[0]))
         subprocess.run([sys.executable, str(HERE / "probe.py"), "clients", "--label", "archived-ensurepip", "--only", "pip"], env=environment, check=True)
     else:
-        clients(args.label, args.only)
+        clients(args.label, args.only, args.keep_overrides)
