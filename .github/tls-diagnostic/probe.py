@@ -153,7 +153,7 @@ def clients(label, names):
 
 
 def isolated():
-    root = Path(tempfile.mkdtemp(prefix="tls-isolation-"))
+    root = Path(tempfile.mkdtemp(prefix="tls-isolation-", dir=os.environ.get("RUNNER_TEMP")))
     config = root / "pre-commit.json"
     entry = f'python "{HERE / "probe.py"}" clients --label pre-commit --only python,pip'
     config.write_text(json.dumps({"repos": [{"repo": "local", "hooks": [{

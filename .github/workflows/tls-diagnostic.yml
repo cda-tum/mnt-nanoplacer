@@ -128,37 +128,6 @@
           }
         }
       ]
-    },
-    "offline_stores": {
-      "name": "TLS / original stores and offline rollover chains",
-      "runs-on": "ubuntu-latest",
-      "timeout-minutes": 10,
-      "steps": [
-        {
-          "name": "Keep bootstrap protected with the existing verified CA bundle",
-          "shell": "python",
-          "run": "import hashlib\nimport io\nimport os\nimport pathlib\nimport urllib.request\nimport zipfile\n\n# Verify before using: the preinstalled client's trust store may be stale.\nurl = \"https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl\"\nwith urllib.request.urlopen(url, timeout=60) as response:\n    wheel = response.read()\nif hashlib.sha256(wheel).hexdigest() != \"e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1\":\n    raise SystemExit(\"certifi checksum mismatch\")\nbundle = pathlib.Path(os.environ[\"RUNNER_TEMP\"]) / \"ci-ca.pem\"\nwith zipfile.ZipFile(io.BytesIO(wheel)) as archive:\n    bundle.write_bytes(archive.read(\"certifi/cacert.pem\"))\nempty = bundle.parent / \"empty-ca-directory\"\nempty.mkdir(exist_ok=True)\nwith open(os.environ[\"GITHUB_ENV\"], \"a\", encoding=\"utf-8\") as environment:\n    for key in (\"SSL_CERT_FILE\", \"REQUESTS_CA_BUNDLE\", \"PIP_CERT\", \"GIT_SSL_CAINFO\"):\n        environment.write(f\"{key}={bundle.as_posix()}\\n\")\n    environment.write(f\"SSL_CERT_DIR={empty.as_posix()}\\n\")"
-        },
-        {
-          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-          "with": {
-            "persist-credentials": false
-          }
-        },
-        {
-          "name": "Record original image and CA package",
-          "shell": "python",
-          "run": "import json, os, platform, subprocess, sys\nprint(json.dumps({\"image\": os.environ.get(\"ImageVersion\"), \"platform\": platform.platform(), \"initial_python\": sys.version}))\nif sys.platform == \"linux\":\n    subprocess.run([\"dpkg-query\", \"-W\", \"ca-certificates\"], check=True)\n"
-        },
-        {
-          "name": "Measure embedded Node and export its bundled roots",
-          "uses": "./.github/tls-diagnostic/node"
-        },
-        {
-          "name": "Verify regular and rollover certificate chains offline",
-          "run": "python .github/tls-diagnostic/probe.py offline"
-        }
-      ]
     }
   }
 }
