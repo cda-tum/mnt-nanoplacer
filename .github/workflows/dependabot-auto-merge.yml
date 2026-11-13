@@ -29,9 +29,37 @@ jobs:
           sudo apt-get -o Acquire::Retries=3 update
           sudo apt-get -o Acquire::Retries=3 install --only-upgrade --yes ca-certificates
 
-      # The action verifies the first commit. It must also be the PR head.
+      - name: Verify merges from main
+        if: github.event.pull_request.commits > 1 && !github.event.pull_request.draft
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # fetch-metadata verifies the first PR commit. Check every commit added to it.
+          update=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/commits?per_page=1" --jq '.[0].sha')
+          git init --bare --quiet "$RUNNER_TEMP/pr-history.git"
+          cd "$RUNNER_TEMP/pr-history.git"
+          git fetch --quiet --no-tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "$BASE_SHA" "$HEAD_SHA"
+          [[ $(git rev-list --count "$BASE_SHA..$update") == 1 ]] || exit 0
+
+          tip=$HEAD_SHA
+          while [[ "$tip" != "$update" ]]; do
+            read -r tree first second extra <<< "$(git show -s --format='%T %P' "$tip")"
+            [[ -n "$second" && -z "$extra" ]] || exit 0
+            git merge-base --is-ancestor "$second" "$BASE_SHA" || exit 0
+            expected=$(git merge-tree --write-tree --no-messages "$first" "$second") || exit 0
+            [[ "$tree" == "$expected" ]] || exit 0
+            tip=$first
+          done
+          echo "clean=true" >> "$GITHUB_OUTPUT"
+
       - name: Read verified Dependabot metadata
-        if: github.event.pull_request.commits == 1 && !github.event.pull_request.draft
+        if: >-
+          (github.event.pull_request.commits == 1 || steps.history.outputs.clean == 'true') &&
+          !github.event.pull_request.draft
         id: metadata
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
