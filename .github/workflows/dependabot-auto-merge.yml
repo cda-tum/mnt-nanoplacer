@@ -1,0 +1,84 @@
+name: 🤖 CI · Dependabot auto-merge
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      NODE_OPTIONS: --use-openssl-ca
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      SSL_CERT_DIR: /etc/ssl/certs
+    steps:
+      - name: Refresh system certificates
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install --only-upgrade --yes ca-certificates
+
+      - name: Verify merges from main
+        if: github.event.pull_request.commits > 1 && !github.event.pull_request.draft
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # fetch-metadata verifies the first PR commit. Check every commit added to it.
+          update=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/commits?per_page=1" --jq '.[0].sha')
+          git init --bare --quiet "$RUNNER_TEMP/pr-history.git"
+          cd "$RUNNER_TEMP/pr-history.git"
+          git fetch --quiet --no-tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "$BASE_SHA" "$HEAD_SHA"
+          [[ $(git rev-list --count "$BASE_SHA..$update") == 1 ]] || exit 0
+
+          tip=$HEAD_SHA
+          while [[ "$tip" != "$update" ]]; do
+            read -r tree first second extra <<< "$(git show -s --format='%T %P' "$tip")"
+            [[ -n "$second" && -z "$extra" ]] || exit 0
+            git merge-base --is-ancestor "$second" "$BASE_SHA" || exit 0
+            expected=$(git merge-tree --write-tree --no-messages "$first" "$second") || exit 0
+            [[ "$tree" == "$expected" ]] || exit 0
+            tip=$first
+          done
+          echo "clean=true" >> "$GITHUB_OUTPUT"
+
+      - name: Read verified Dependabot metadata
+        if: >-
+          (github.event.pull_request.commits == 1 || steps.history.outputs.clean == 'true') &&
+          !github.event.pull_request.draft
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - name: Apply merge policy
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          AUTO_MERGE_OWNER: ${{ github.event.pull_request.auto_merge.enabled_by.login }}
+          DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          VERIFIED: ${{ steps.metadata.outcome == 'success' }}
+        run: |
+          if [[ "$VERIFIED" == true ]] && jq -e '
+            type == "array" and length > 0 and all(.[];
+              (.dependencyName | type == "string" and length > 0 and ascii_downcase != "pypa/gh-action-pypi-publish") and
+              (.updateType == "version-update:semver-patch" or .updateType == "version-update:semver-minor")
+            )' <<< "$DEPENDENCIES" > /dev/null; then
+            gh pr merge "$PR_URL" --auto --squash --match-head-commit "$HEAD_SHA"
+          elif [[ "$AUTO_MERGE_OWNER" == 'github-actions[bot]' ]]; then
+            gh pr merge "$PR_URL" --disable-auto
+          fi
