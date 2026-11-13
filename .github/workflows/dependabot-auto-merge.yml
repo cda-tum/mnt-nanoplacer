@@ -1,0 +1,56 @@
+name: 🤖 CI · Dependabot auto-merge
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      NODE_OPTIONS: --use-openssl-ca
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      SSL_CERT_DIR: /etc/ssl/certs
+    steps:
+      - name: Refresh system certificates
+        run: |
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install --only-upgrade --yes ca-certificates
+
+      # The action verifies the first commit. It must also be the PR head.
+      - name: Read verified Dependabot metadata
+        if: github.event.pull_request.commits == 1 && !github.event.pull_request.draft
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - name: Apply merge policy
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          AUTO_MERGE_OWNER: ${{ github.event.pull_request.auto_merge.enabled_by.login }}
+          DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          VERIFIED: ${{ steps.metadata.outcome == 'success' }}
+        run: |
+          if [[ "$VERIFIED" == true ]] && jq -e '
+            type == "array" and length > 0 and all(.[];
+              (.dependencyName | type == "string" and length > 0 and ascii_downcase != "pypa/gh-action-pypi-publish") and
+              (.updateType == "version-update:semver-patch" or .updateType == "version-update:semver-minor")
+            )' <<< "$DEPENDENCIES" > /dev/null; then
+            gh pr merge "$PR_URL" --auto --squash --match-head-commit "$HEAD_SHA"
+          elif [[ "$AUTO_MERGE_OWNER" == 'github-actions[bot]' ]]; then
+            gh pr merge "$PR_URL" --disable-auto
+          fi
